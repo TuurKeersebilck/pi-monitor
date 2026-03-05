@@ -7,31 +7,37 @@ import (
 
 	"github.com/tuurk/dashboard/internal/api"
 	"github.com/tuurk/dashboard/internal/docker"
+	"github.com/tuurk/dashboard/internal/immich"
 	"github.com/tuurk/dashboard/internal/pihole"
 	"github.com/tuurk/dashboard/internal/ws"
 )
 
 func main() {
-	// Config from environment
 	piholeURL := getenv("PIHOLE_URL", "http://pihole:80")
 	piholePassword := getenv("PIHOLE_APP_PASSWORD", "")
+	immichURL := getenv("IMMICH_URL", "")
+	immichAPIKey := getenv("IMMICH_API_KEY", "")
 	staticDir := getenv("STATIC_DIR", "/app/frontend/dist")
 	listenAddr := getenv("LISTEN_ADDR", ":8080")
 
-	// Docker client
 	dockerClient, err := docker.NewClient()
 	if err != nil {
 		log.Fatalf("failed to create docker client: %v", err)
 	}
 	defer dockerClient.Close()
 
-	// Pi-hole client
 	piholeClient := pihole.NewClient(piholeURL, piholePassword)
 
-	// WebSocket hub
-	hub := ws.NewHub(dockerClient, piholeClient)
+	var immichClient *immich.Client
+	if immichURL != "" && immichAPIKey != "" {
+		immichClient = immich.NewClient(immichURL, immichAPIKey)
+		log.Printf("immich integration enabled: %s", immichURL)
+	} else {
+		log.Println("immich integration disabled (IMMICH_URL or IMMICH_API_KEY not set)")
+	}
 
-	// HTTP handler
+	hub := ws.NewHub(dockerClient, piholeClient, immichClient)
+
 	handler := api.NewHandler(hub)
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux, staticDir)

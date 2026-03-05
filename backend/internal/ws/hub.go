@@ -9,20 +9,22 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/tuurk/dashboard/internal/docker"
+	"github.com/tuurk/dashboard/internal/immich"
 	"github.com/tuurk/dashboard/internal/pihole"
 	"github.com/tuurk/dashboard/internal/system"
 )
 
 const (
 	fastPollInterval = 1 * time.Second  // system stats + containers
-	slowPollInterval = 30 * time.Second // pi-hole (external API, just an overview)
+	slowPollInterval = 30 * time.Second // pi-hole + immich (overview data)
 )
 
 type Payload struct {
-	System     *system.Stats       `json:"system"`
-	Containers []docker.ContainerInfo `json:"containers"`
-	Pihole     *pihole.Stats       `json:"pihole"`
-	Error      string              `json:"error,omitempty"`
+	System     *system.Stats         `json:"system,omitempty"`
+	Containers []docker.ContainerInfo `json:"containers,omitempty"`
+	Pihole     *pihole.Stats         `json:"pihole,omitempty"`
+	Immich     *immich.Stats         `json:"immich,omitempty"`
+	Error      string                `json:"error,omitempty"`
 }
 
 type Hub struct {
@@ -30,14 +32,16 @@ type Hub struct {
 	mu         sync.Mutex
 	docker     *docker.Client
 	pihole     *pihole.Client
+	immich     *immich.Client
 	cancelPoll context.CancelFunc
 }
 
-func NewHub(dockerClient *docker.Client, piholeClient *pihole.Client) *Hub {
+func NewHub(dockerClient *docker.Client, piholeClient *pihole.Client, immichClient *immich.Client) *Hub {
 	return &Hub{
 		clients: make(map[*websocket.Conn]struct{}),
 		docker:  dockerClient,
 		pihole:  piholeClient,
+		immich:  immichClient,
 	}
 }
 
@@ -47,12 +51,10 @@ func (h *Hub) AddClient(conn *websocket.Conn) {
 	wasEmpty := len(h.clients) == 1
 	h.mu.Unlock()
 
-	// Start polling only when the first client connects
 	if wasEmpty {
 		h.startPolling()
 	}
 
-	// Send immediately on connect
 	go h.broadcastFast()
 	go h.broadcastSlow()
 }
@@ -65,7 +67,6 @@ func (h *Hub) RemoveClient(conn *websocket.Conn) {
 
 	conn.Close()
 
-	// Stop polling when last client disconnects
 	if isEmpty && h.cancelPoll != nil {
 		log.Println("ws: no clients connected, stopping poll")
 		h.cancelPoll()
@@ -78,7 +79,6 @@ func (h *Hub) startPolling() {
 	ctx, cancel := context.WithCancel(context.Background())
 	h.cancelPoll = cancel
 
-	// Fast ticker: system stats + docker every 1s
 	go func() {
 		ticker := time.NewTicker(fastPollInterval)
 		defer ticker.Stop()
@@ -92,7 +92,6 @@ func (h *Hub) startPolling() {
 		}
 	}()
 
-	// Slow ticker: pi-hole every 10s
 	go func() {
 		ticker := time.NewTicker(slowPollInterval)
 		defer ticker.Stop()
@@ -157,10 +156,31 @@ func (h *Hub) broadcastFast() {
 }
 
 func (h *Hub) broadcastSlow() {
-	stats, err := h.pihole.GetStats()
-	if err != nil {
-		log.Printf("ws: pihole error: %v", err)
-	} else {
-		h.send(Payload{Pihole: stats})
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		stats, err := h.pihole.GetStats()
+		if err != nil {
+			log.Printf("ws: pihole error: %v", err)
+		} else {
+			h.send(Payload{Pihole: stats})
+		}
+	}()
+
+	if h.immich != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			stats, err := h.immich.GetStats()
+			if err != nil {
+				log.Printf("ws: immich error: %v", err)
+			} else {
+				h.send(Payload{Immich: stats})
+			}
+		}()
 	}
+
+	wg.Wait()
 }

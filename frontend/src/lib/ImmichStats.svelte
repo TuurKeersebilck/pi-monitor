@@ -1,5 +1,5 @@
 <script>
-  let { pihole } = $props()
+  let { immich } = $props()
   const fmt = (n) => n.toLocaleString()
 </script>
 
@@ -7,33 +7,44 @@
   <div class="card-header">
     <div class="card-title">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="color:#2dd4bf">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
       </svg>
-      Pi-hole Statistics
+      Immich Stats
     </div>
-    <span class="badge">LIVE MONITORING</span>
+    <span class="badge">LIBRARY STATS</span>
   </div>
   <div class="stats-grid">
     <div class="stat">
-      <span class="stat-label">TOTAL QUERIES</span>
-      <span class="stat-value">{fmt(pihole.total_queries)}</span>
+      <span class="stat-label">TOTAL PHOTOS</span>
+      <span class="stat-value">{fmt(immich.photos)}</span>
     </div>
     <div class="stat">
-      <span class="stat-label">BLOCKED</span>
-      <span class="stat-value teal">{fmt(pihole.blocked_queries)}</span>
+      <span class="stat-label">TOTAL VIDEOS</span>
+      <span class="stat-value">{fmt(immich.videos)}</span>
     </div>
     <div class="stat">
-      <span class="stat-label">BLOCK PERCENTAGE</span>
-      <span class="stat-value teal">
-        {pihole.blocked_percent.toFixed(1)}%
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
-          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
-        </svg>
+      <span class="stat-label">STORAGE USED</span>
+      <span class="stat-value teal">{immich.usage_gb} GB</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">LIBRARY HEALTH</span>
+      <span class="stat-value" class:teal={immich.healthy} class:red={!immich.healthy}>
+        {immich.healthy ? 'Healthy' : 'Unhealthy'}
+        {#if immich.healthy}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        {:else}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        {/if}
       </span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">BLOCKLIST SIZE</span>
-      <span class="stat-value">{pihole.domains_blocked >= 1000 ? (pihole.domains_blocked / 1000).toFixed(0) + 'k' : fmt(pihole.domains_blocked)}</span>
     </div>
   </div>
 </div>
@@ -102,8 +113,9 @@
     letter-spacing: -0.02em;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.3rem;
   }
 
   .stat-value.teal { color: #2dd4bf; }
+  .stat-value.red { color: #f85149; }
 </style>

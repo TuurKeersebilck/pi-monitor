@@ -3,6 +3,7 @@ package system
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -14,6 +15,13 @@ type Stats struct {
 	RAM  RAMStats  `json:"ram"`
 	Disk DiskStats `json:"disk"`
 	Temp TempStats `json:"temp"`
+	Info SysInfo   `json:"info"`
+}
+
+type SysInfo struct {
+	Hostname string `json:"hostname"`
+	IP       string `json:"ip"`
+	Uptime   string `json:"uptime"`
 }
 
 type TempStats struct {
@@ -53,8 +61,47 @@ func GetStats() (*Stats, error) {
 	}
 
 	temp := getTemp()
+	info := getSysInfo()
 
-	return &Stats{CPU: cpu, RAM: ram, Disk: disk, Temp: temp}, nil
+	return &Stats{CPU: cpu, RAM: ram, Disk: disk, Temp: temp, Info: info}, nil
+}
+
+func getSysInfo() SysInfo {
+	hostname, _ := os.Hostname()
+
+	ip := ""
+	ifaces, err := net.Interfaces()
+	if err == nil {
+		for _, iface := range ifaces {
+			if iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagUp == 0 {
+				continue
+			}
+			addrs, _ := iface.Addrs()
+			for _, addr := range addrs {
+				if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+					ip = ipnet.IP.String()
+					break
+				}
+			}
+			if ip != "" {
+				break
+			}
+		}
+	}
+
+	uptime := ""
+	if data, err := os.ReadFile("/proc/uptime"); err == nil {
+		fields := strings.Fields(string(data))
+		if len(fields) > 0 {
+			secs, _ := strconv.ParseFloat(fields[0], 64)
+			d := int(secs) / 86400
+			h := (int(secs) % 86400) / 3600
+			m := (int(secs) % 3600) / 60
+			uptime = fmt.Sprintf("%dd %dh %dm", d, h, m)
+		}
+	}
+
+	return SysInfo{Hostname: hostname, IP: ip, Uptime: uptime}
 }
 
 // prevCPUStat holds the last CPU snapshot for delta-based measurement across polls.
