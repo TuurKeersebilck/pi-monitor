@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 )
 
 type Stats struct {
@@ -58,27 +57,25 @@ func GetStats() (*Stats, error) {
 	return &Stats{CPU: cpu, RAM: ram, Disk: disk, Temp: temp}, nil
 }
 
-// getCPU reads two snapshots from /proc/stat to calculate usage
+// prevCPUStat holds the last CPU snapshot for delta-based measurement across polls.
+var prevCPUStat []uint64
+
+// getCPU computes CPU usage as the delta between the current and previous /proc/stat
+// snapshot. On the first call it returns 0% and stores the baseline.
 func getCPU() (CPUStats, error) {
-	s1, err := readCPUStat()
+	cur, err := readCPUStat()
 	if err != nil {
 		return CPUStats{}, err
 	}
 
-	time.Sleep(100 * time.Millisecond)
-
-	s2, err := readCPUStat()
-	if err != nil {
-		return CPUStats{}, err
+	if prevCPUStat == nil {
+		prevCPUStat = cur
+		return CPUStats{UsagePercent: 0}, nil
 	}
 
-	idle1 := s1[3]
-	idle2 := s2[3]
-	total1 := sum(s1)
-	total2 := sum(s2)
-
-	totalDiff := float64(total2 - total1)
-	idleDiff := float64(idle2 - idle1)
+	totalDiff := float64(sum(cur) - sum(prevCPUStat))
+	idleDiff := float64(cur[3] - prevCPUStat[3])
+	prevCPUStat = cur
 
 	if totalDiff == 0 {
 		return CPUStats{UsagePercent: 0}, nil
