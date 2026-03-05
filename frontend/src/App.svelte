@@ -27,7 +27,6 @@
 
     ws.onclose = () => {
       connected = false
-      // Reconnect after 3 seconds
       setTimeout(connect, 3000)
     }
   }
@@ -41,87 +40,181 @@
   })
 </script>
 
-<main>
+<div class="app">
   <header>
-    <h1>Pi Dashboard</h1>
-    <span class="status" class:online={connected}>
-      {connected ? 'Connected' : 'Reconnecting...'}
-    </span>
+    <div class="header-left">
+      <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <h1>Pi Dashboard</h1>
+    </div>
+    <div class="header-right">
+      <span class="connection-badge" class:online={connected}>
+        <span class="conn-dot"></span>
+        {connected ? 'Connected' : 'Reconnecting...'}
+      </span>
+    </div>
   </header>
 
-  {#if system}
-    <SystemStats {system} />
-  {/if}
+  <main>
+    {#if system}
+      <section class="section">
+        <h2 class="section-title">System Overview</h2>
+        <SystemStats {system} />
+      </section>
+    {/if}
 
-  {#if pihole}
-    <PiholeStats {pihole} />
-  {/if}
+    {#if pihole}
+      <section class="section">
+        <h2 class="section-title">Pi-hole Statistics</h2>
+        <PiholeStats {pihole} />
+      </section>
+    {/if}
 
-  {#if containers.length > 0}
-    <section class="services">
-      <h2>Services</h2>
-      <div class="grid">
-        {#each containers as container (container.name)}
-          <ServiceCard {container} />
-        {/each}
-      </div>
-    </section>
-  {/if}
-</main>
+    {#if containers.length > 0}
+      <section class="section">
+        <h2 class="section-title">Services</h2>
+        <div class="services-grid">
+          {#each containers as container (container.name)}
+            <ServiceCard {container} />
+          {/each}
+        </div>
+      </section>
+    {/if}
+  </main>
+
+  <footer>
+    <span class="footer-text">Pi Dashboard · {__APP_VERSION__}</span>
+  </footer>
+</div>
 
 <style>
-  :global(body) {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0f1117;
-    color: #e1e4e8;
+  :global(*) {
+    box-sizing: border-box;
   }
 
-  main {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 1.5rem;
+  :global(body) {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0b0e14;
+    color: #c9d1d9;
+    min-height: 100vh;
+  }
+
+  .app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 2rem;
+    padding: 1rem 2rem;
+    background: #111720;
+    border-bottom: 1px solid #1c2333;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .logo {
+    width: 24px;
+    height: 24px;
+    color: #2dd4bf;
   }
 
   h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 1.25rem;
+    font-weight: 700;
     margin: 0;
+    color: #e6edf3;
   }
 
-  h2 {
-    font-size: 1.1rem;
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .connection-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(248, 81, 73, 0.1);
+    color: #f85149;
+    border: 1px solid rgba(248, 81, 73, 0.2);
+  }
+
+  .connection-badge.online {
+    background: rgba(45, 212, 191, 0.1);
+    color: #2dd4bf;
+    border-color: rgba(45, 212, 191, 0.2);
+  }
+
+  .conn-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  main {
+    flex: 1;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1.5rem 2rem;
+  }
+
+  .section {
+    margin-bottom: 2rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
     font-weight: 600;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     margin: 0 0 1rem;
   }
 
-  .status {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 999px;
-    background: #f8514933;
-    color: #f85149;
-  }
-
-  .status.online {
-    background: #23883233;
-    color: #3fb950;
-  }
-
-  .services {
-    margin-top: 1.5rem;
-  }
-
-  .grid {
+  .services-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+
+  footer {
+    padding: 1rem 2rem;
+    border-top: 1px solid #1c2333;
+    text-align: center;
+  }
+
+  .footer-text {
+    font-size: 0.75rem;
+    color: #484f58;
+  }
+
+  @media (max-width: 640px) {
+    header {
+      padding: 1rem;
+    }
+    main {
+      padding: 1rem;
+    }
+    .services-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
