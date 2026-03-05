@@ -86,7 +86,7 @@
   </main>
 
   <footer>
-    <span class="footer-text">Pi Dashboard · {__APP_VERSION__}</span>
+    <span class="footer-text">Pi Dashboard v1.1.0</span>
   </footer>
 </div>
 
