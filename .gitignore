@@ -1,0 +1,18 @@
+# Environment
+.env
+
+# Go
+backend/dashboard
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.svelte-kit/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
