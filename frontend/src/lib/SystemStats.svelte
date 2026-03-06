@@ -18,7 +18,7 @@
 
 <div class="gauges">
   <!-- CPU -->
-  <div class="gauge-card">
+  <div class="gauge-card" style="border-top: 2px solid #2dd4bf">
     <svg class="ring" viewBox="0 0 36 36">
       <path class="bg" d={PATH}/>
       <path class="fill" style="stroke:#2dd4bf" stroke-dasharray="{system.cpu.usage_percent},100" d={PATH}/>
@@ -28,7 +28,7 @@
   </div>
 
   <!-- RAM -->
-  <div class="gauge-card">
+  <div class="gauge-card" style="border-top: 2px solid #3fb950">
     <svg class="ring" viewBox="0 0 36 36">
       <path class="bg" d={PATH}/>
       <path class="fill" style="stroke:#3fb950" stroke-dasharray="{system.ram.usage_percent},100" d={PATH}/>
@@ -39,7 +39,7 @@
   </div>
 
   <!-- Disk -->
-  <div class="gauge-card">
+  <div class="gauge-card" style="border-top: 2px solid #d29922">
     <svg class="ring" viewBox="0 0 36 36">
       <path class="bg" d={PATH}/>
       <path class="fill" style="stroke:#d29922" stroke-dasharray="{system.disk.usage_percent},100" d={PATH}/>
@@ -51,7 +51,7 @@
 
   <!-- Temp -->
   {#if system.temp?.cpu_temp_c}
-    <div class="gauge-card">
+    <div class="gauge-card" style="border-top: 2px solid {tempColor(system.temp.cpu_temp_c)}">
       <svg class="ring" viewBox="0 0 36 36">
         <path class="bg" d={PATH}/>
         <path
@@ -69,7 +69,7 @@
 
   <!-- Network -->
   {#if system.net}
-    <div class="gauge-card net-card">
+    <div class="gauge-card net-card" style="border-top: 2px solid #6366f1">
       <div class="net-rows">
         <div class="net-row">
           <svg viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2.5" width="16" height="16">

@@ -4,6 +4,7 @@
   import ServiceCard from './lib/ServiceCard.svelte'
   import PiholeStats from './lib/PiholeStats.svelte'
   import ImmichStats from './lib/ImmichStats.svelte'
+  import Bookmarks from './lib/Bookmarks.svelte'
 
   let system = $state(null)
   let containers = $state([])
@@ -118,6 +119,19 @@
       </section>
     {/if}
 
+    <section>
+      <div class="section-header">
+        <div>
+          <h2 class="section-heading">Services</h2>
+          <p class="section-sub">Quick access to your homelab</p>
+        </div>
+        {#if query}
+          <span class="result-count">filtering: "{query}"</span>
+        {/if}
+      </div>
+      <Bookmarks {query} />
+    </section>
+
     {#if pihole || immich}
       <div class="middle-row">
         {#if pihole}<PiholeStats {pihole} />{/if}
@@ -128,35 +142,31 @@
     {#if containers.length > 0}
       <section>
         <div class="section-header">
-          <h2 class="section-heading" style="display:flex;align-items:center;gap:0.5rem">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" style="color:#2dd4bf">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-            </svg>
-            Services
-          </h2>
-          {#if query}
-            <span class="result-count">{containers.filter(c => c.name.toLowerCase().includes(query.toLowerCase())).length} result{containers.filter(c => c.name.toLowerCase().includes(query.toLowerCase())).length !== 1 ? 's' : ''}</span>
-          {/if}
+          <div>
+            <h2 class="section-heading" style="display:flex;align-items:center;gap:0.5rem">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" style="color:#6366f1">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+              </svg>
+              Docker Containers
+            </h2>
+            <p class="section-sub">Live container status</p>
+          </div>
         </div>
 
-        {#if grouped.length === 0}
-          <p class="no-results">No services match "{query}"</p>
-        {:else}
-          {#each grouped as [group, items]}
-            <div class="service-group">
-              <div class="group-label">
-                <span class="group-name">{group}</span>
-                <span class="group-count">{items.length}</span>
-              </div>
-              <div class="services-grid">
-                {#each items as container (container.name)}
-                  <ServiceCard {container} />
-                {/each}
-              </div>
+        {#each grouped as [group, items]}
+          <div class="service-group">
+            <div class="group-label">
+              <span class="group-name">{group}</span>
+              <span class="group-count">{items.length}</span>
             </div>
-          {/each}
-        {/if}
+            <div class="services-grid">
+              {#each items as container (container.name)}
+                <ServiceCard {container} />
+              {/each}
+            </div>
+          </div>
+        {/each}
       </section>
     {/if}
   </main>
@@ -333,6 +343,12 @@
     letter-spacing: -0.02em;
   }
 
+  .section-sub {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #484f58;
+  }
+
   .system-sub {
     margin: 0;
     font-size: 0.8rem;
@@ -412,13 +428,6 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 1rem;
-  }
-
-  .no-results {
-    font-size: 0.875rem;
-    color: #484f58;
-    margin: 0;
-    padding: 2rem 0;
   }
 
   /* ── Footer ── */
