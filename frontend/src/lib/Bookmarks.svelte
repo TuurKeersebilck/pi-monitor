@@ -73,7 +73,7 @@
             src={iconSrc(service)}
             alt=""
             class="icon-img"
-            onerror="this.style.display='none'"
+            onerror={(e) => e.currentTarget.style.display = 'none'}
           />
         </div>
         <span class="name">{service.name}</span>
