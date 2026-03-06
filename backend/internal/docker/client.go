@@ -16,6 +16,8 @@ type ContainerInfo struct {
 	Running         bool   `json:"running"`
 	UpdateAvailable bool   `json:"update_available"`
 	LatestVersion   string `json:"latest_version,omitempty"`
+	Group           string `json:"group"`
+	URL             string `json:"url"`
 }
 
 type Client struct {
@@ -50,6 +52,8 @@ func (c *Client) ListContainers(ctx context.Context) ([]ContainerInfo, error) {
 			Status:  ctr.Status,
 			Uptime:  parseUptime(ctr.Status),
 			Running: ctr.State == "running",
+			Group:   ctr.Labels["dashboard.group"],
+			URL:     ctr.Labels["dashboard.url"],
 		})
 	}
 

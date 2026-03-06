@@ -8,14 +8,21 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 type Stats struct {
-	CPU  CPUStats  `json:"cpu"`
-	RAM  RAMStats  `json:"ram"`
-	Disk DiskStats `json:"disk"`
-	Temp TempStats `json:"temp"`
-	Info SysInfo   `json:"info"`
+	CPU  CPUStats     `json:"cpu"`
+	RAM  RAMStats     `json:"ram"`
+	Disk DiskStats    `json:"disk"`
+	Temp TempStats    `json:"temp"`
+	Net  NetworkStats `json:"net"`
+	Info SysInfo      `json:"info"`
+}
+
+type NetworkStats struct {
+	RxBytesPerSec float64 `json:"rx_bytes_s"`
+	TxBytesPerSec float64 `json:"tx_bytes_s"`
 }
 
 type SysInfo struct {
@@ -61,9 +68,10 @@ func GetStats() (*Stats, error) {
 	}
 
 	temp := getTemp()
+	netStats := getNetwork()
 	info := getSysInfo()
 
-	return &Stats{CPU: cpu, RAM: ram, Disk: disk, Temp: temp, Info: info}, nil
+	return &Stats{CPU: cpu, RAM: ram, Disk: disk, Temp: temp, Net: netStats, Info: info}, nil
 }
 
 func getSysInfo() SysInfo {
@@ -226,6 +234,73 @@ func getTemp() TempStats {
 		return TempStats{}
 	}
 	return TempStats{CPUTempC: roundTo(float64(raw)/1000, 1)}
+}
+
+var (
+	prevNetStats map[string][2]uint64
+	prevNetTime  time.Time
+)
+
+func getNetwork() NetworkStats {
+	cur := readNetDev()
+	now := time.Now()
+
+	if prevNetStats == nil {
+		prevNetStats = cur
+		prevNetTime = now
+		return NetworkStats{}
+	}
+
+	elapsed := now.Sub(prevNetTime).Seconds()
+	prevNetStats = cur
+	prevNetTime = now
+
+	if elapsed <= 0 {
+		return NetworkStats{}
+	}
+
+	var totalRx, totalTx float64
+	for iface, curVals := range cur {
+		if prev, ok := prevNetStats[iface]; ok {
+			totalRx += float64(curVals[0]-prev[0]) / elapsed
+			totalTx += float64(curVals[1]-prev[1]) / elapsed
+		}
+	}
+
+	return NetworkStats{
+		RxBytesPerSec: roundTo(totalRx, 0),
+		TxBytesPerSec: roundTo(totalTx, 0),
+	}
+}
+
+func readNetDev() map[string][2]uint64 {
+	result := make(map[string][2]uint64)
+	f, err := os.Open("/proc/net/dev")
+	if err != nil {
+		return result
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.Contains(line, ":") {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		iface := strings.TrimSpace(parts[0])
+		if iface == "lo" {
+			continue
+		}
+		fields := strings.Fields(parts[1])
+		if len(fields) < 9 {
+			continue
+		}
+		rx, _ := strconv.ParseUint(fields[0], 10, 64)
+		tx, _ := strconv.ParseUint(fields[8], 10, 64)
+		result[iface] = [2]uint64{rx, tx}
+	}
+	return result
 }
 
 func sum(vals []uint64) uint64 {

@@ -2,7 +2,24 @@
   let { container } = $props()
 </script>
 
-<div class="card">
+<svelte:element
+  this={container.url ? 'a' : 'div'}
+  href={container.url || undefined}
+  target={container.url ? '_blank' : undefined}
+  rel={container.url ? 'noopener noreferrer' : undefined}
+  class="card"
+  class:clickable={!!container.url}
+>
+  {#if container.update_available}
+    <div class="update-dot" title="Update available">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    </div>
+  {/if}
+
   <div class="card-top">
     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -11,7 +28,7 @@
     </svg>
     <span class="health" class:healthy={container.running}>
       <span class="health-dot"></span>
-      {container.running ? 'HEALTHY' : 'STOPPED'}
+      {container.running ? 'ONLINE' : 'STOPPED'}
     </span>
   </div>
 
@@ -21,25 +38,23 @@
   </div>
 
   <div class="card-footer">
-    <span class="uptime">UPTIME: {container.uptime.toUpperCase()}</span>
-    <svg class="ext-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-      <polyline points="15 3 21 3 21 9"/>
-      <line x1="10" y1="14" x2="21" y2="3"/>
-    </svg>
+    {#if container.running && container.uptime !== 'stopped'}
+      <span class="uptime">UP {container.uptime.toUpperCase()}</span>
+    {:else}
+      <span class="uptime stopped">STOPPED</span>
+    {/if}
+    {#if container.url}
+      <span class="open-hint">
+        OPEN
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </span>
+    {/if}
   </div>
-
-  {#if container.update_available}
-    <div class="update-banner">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      Update available
-    </div>
-  {/if}
-</div>
+</svelte:element>
 
 <style>
   .card {
@@ -50,10 +65,29 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    text-decoration: none;
+    color: inherit;
   }
 
-  .card:hover { border-color: #30363d; }
+  .card.clickable { cursor: pointer; }
+  .card.clickable:hover { border-color: #30363d; background: #1c2128; }
+
+  .update-dot {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(210, 153, 34, 0.15);
+    border: 1px solid rgba(210, 153, 34, 0.35);
+    color: #d29922;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
   .card-top {
     display: flex;
@@ -88,7 +122,8 @@
   }
 
   .health-dot {
-    width: 5px; height: 5px;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     background: currentColor;
   }
@@ -126,26 +161,18 @@
     color: #8b949e;
   }
 
-  .ext-icon {
-    width: 14px;
-    height: 14px;
+  .uptime.stopped { color: #484f58; }
+
+  .open-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     color: #484f58;
-    cursor: pointer;
     transition: color 0.15s;
   }
 
-  .ext-icon:hover { color: #8b949e; }
-
-  .update-banner {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.6rem;
-    border-radius: 8px;
-    background: rgba(210, 153, 34, 0.1);
-    border: 1px solid rgba(210, 153, 34, 0.2);
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #d29922;
-  }
+  .card.clickable:hover .open-hint { color: #2dd4bf; }
 </style>

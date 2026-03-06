@@ -8,6 +8,12 @@
     if (t >= 60) return '#d29922'
     return '#2dd4bf'
   }
+
+  function fmtBytes(bps) {
+    if (bps >= 1_048_576) return (bps / 1_048_576).toFixed(1) + ' MB/s'
+    if (bps >= 1024) return (bps / 1024).toFixed(0) + ' KB/s'
+    return bps.toFixed(0) + ' B/s'
+  }
 </script>
 
 <div class="gauges">
@@ -60,12 +66,36 @@
       <span class="sub">{system.temp.cpu_temp_c}°C</span>
     </div>
   {/if}
+
+  <!-- Network -->
+  {#if system.net}
+    <div class="gauge-card net-card">
+      <div class="net-rows">
+        <div class="net-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2.5" width="16" height="16">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+            <polyline points="17 6 23 6 23 12"/>
+          </svg>
+          <span class="net-val">{fmtBytes(system.net.tx_bytes_s)}</span>
+        </div>
+        <div class="net-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" width="16" height="16">
+            <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+            <polyline points="17 18 23 18 23 12"/>
+          </svg>
+          <span class="net-val">{fmtBytes(system.net.rx_bytes_s)}</span>
+        </div>
+      </div>
+      <span class="label">Network I/O</span>
+      <span class="sub">↑ upload &nbsp;·&nbsp; ↓ download</span>
+    </div>
+  {/if}
 </div>
 
 <style>
   .gauges {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
     gap: 1rem;
   }
 
@@ -83,10 +113,7 @@
 
   .gauge-card:hover { border-color: #30363d; }
 
-  .ring {
-    width: 130px;
-    height: 130px;
-  }
+  .ring { width: 130px; height: 130px; }
 
   .bg {
     fill: none;
@@ -122,11 +149,31 @@
     text-align: center;
   }
 
-  @media (max-width: 768px) {
-    .gauges { grid-template-columns: repeat(2, 1fr); }
+  .net-card { justify-content: center; gap: 1rem; }
+
+  .net-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0 0.5rem;
   }
 
-  @media (max-width: 400px) {
+  .net-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .net-val {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f0f6fc;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
     .gauges { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
