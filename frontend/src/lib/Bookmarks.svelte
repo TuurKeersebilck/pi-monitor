@@ -1,238 +1,383 @@
 <script>
-  import { services } from './services.js'
+  import { onMount } from 'svelte'
 
-  let { query = '' } = $props()
+  let services = $state([])
+  let showDialog = $state(false)
+  let form = $state({ name: '', url: '', icon: '' })
+  let error = $state('')
 
-  // SVG inner-content for each named icon
-  const ICONS = {
-    film:     `<rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>`,
-    image:    `<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>`,
-    music:    `<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>`,
-    shield:   `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>`,
-    cloud:    `<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>`,
-    monitor:  `<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>`,
-    box:      `<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>`,
-    globe:    `<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>`,
-    home:     `<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>`,
-    database: `<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>`,
-    download: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>`,
-    code:     `<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>`,
-    lock:     `<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`,
-    rss:      `<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>`,
-    tv:       `<rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/>`,
-    activity: `<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`,
-    server:   `<rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>`,
-    wifi:     `<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>`,
-    router:   `<rect x="2" y="9" width="20" height="8" rx="2"/><line x1="8" y1="9" x2="8" y2="17"/><line x1="12" y1="9" x2="12" y2="17"/><line x1="16" y1="9" x2="16" y2="17"/><line x1="6" y1="3" x2="6" y2="9"/><line x1="12" y1="3" x2="12" y2="9"/><line x1="18" y1="3" x2="18" y2="9"/>`,
-    camera:   `<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>`,
-    book:     `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
-    settings: `<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>`,
-    zap:      `<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>`,
-    layers:   `<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>`,
-  }
-
-  const FALLBACK = `<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`
-
-  function icon(name) {
-    return ICONS[name] ?? FALLBACK
-  }
-
-  function hexToRgba(hex, alpha) {
-    const r = parseInt(hex.slice(1, 3), 16)
-    const g = parseInt(hex.slice(3, 5), 16)
-    const b = parseInt(hex.slice(5, 7), 16)
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`
-  }
-
-  // Group and filter
-  let grouped = $derived.by(() => {
-    const q = query.trim().toLowerCase()
-    const filtered = q
-      ? services.filter(s =>
-          s.name.toLowerCase().includes(q) ||
-          (s.description ?? '').toLowerCase().includes(q) ||
-          (s.group ?? '').toLowerCase().includes(q)
-        )
-      : services
-
-    const map = {}
-    for (const s of filtered) {
-      const g = s.group || 'Other'
-      if (!map[g]) map[g] = []
-      map[g].push(s)
-    }
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
+  onMount(() => {
+    try {
+      const stored = localStorage.getItem('dashboard-services')
+      if (stored) services = JSON.parse(stored)
+    } catch {}
   })
+
+  function persist() {
+    localStorage.setItem('dashboard-services', JSON.stringify(services))
+  }
+
+  function addService() {
+    const name = form.name.trim()
+    const url = form.url.trim()
+    if (!name || !url) { error = 'Name and URL are required.'; return }
+    services = [...services, { name, url, icon: form.icon.trim() }]
+    persist()
+    form = { name: '', url: '', icon: '' }
+    error = ''
+    showDialog = false
+  }
+
+  function remove(i) {
+    services = services.filter((_, idx) => idx !== i)
+    persist()
+  }
+
+  function openDialog() {
+    form = { name: '', url: '', icon: '' }
+    error = ''
+    showDialog = true
+  }
+
+  function iconSrc(s) {
+    if (s.icon) return s.icon
+    try { return new URL(s.url).origin + '/favicon.ico' } catch { return '' }
+  }
+
+  // Deterministic letter color from name
+  const PALETTE = ['#007AFF','#34C759','#FF9500','#AF52DE','#FF2D55','#00C7BE','#FF6B35','#5856D6']
+  function letterColor(name) {
+    return PALETTE[(name.charCodeAt(0) + name.length) % PALETTE.length]
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Escape') showDialog = false
+    if (e.key === 'Enter' && showDialog) addService()
+  }
 </script>
 
-{#if grouped.length === 0}
-  <p class="no-results">No services match "{query}"</p>
-{:else}
-  {#each grouped as [group, items]}
-    <div class="service-group">
-      <div class="group-label">
-        <span class="group-dot" style="background:{items[0].color ?? '#8b949e'}"></span>
-        <span class="group-name">{group}</span>
-        <span class="group-count">{items.length}</span>
-      </div>
-      <div class="grid">
-        {#each items as service (service.name)}
-          {@const color = service.color ?? '#8b949e'}
-          <a
-            class="card"
-            href={service.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style="--color:{color}; --color-bg:{hexToRgba(color, 0.1)}; --color-border:{hexToRgba(color, 0.3)}"
-          >
-            <div class="icon-wrap" style="background:{hexToRgba(color, 0.12)}">
-              <svg viewBox="0 0 24 24" fill="none" stroke={color} stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                {@html icon(service.icon)}
-              </svg>
-            </div>
-            <div class="info">
-              <span class="name">{service.name}</span>
-              {#if service.description}
-                <span class="desc">{service.description}</span>
-              {/if}
-            </div>
-            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-              <polyline points="15 3 21 3 21 9"/>
-              <line x1="10" y1="14" x2="21" y2="3"/>
-            </svg>
-          </a>
-        {/each}
-      </div>
+<svelte:window onkeydown={handleKey} />
+
+<div class="grid">
+  {#each services as service, i (service.name + i)}
+    <div class="wrap">
+      <button class="remove-btn" onclick={() => remove(i)} title="Remove {service.name}" aria-label="Remove {service.name}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <a class="card" href={service.url} target="_blank" rel="noopener noreferrer">
+        <div class="icon-box" style="background:{letterColor(service.name)}">
+          <span class="letter">{service.name[0].toUpperCase()}</span>
+          <img
+            src={iconSrc(service)}
+            alt=""
+            class="icon-img"
+            onerror="this.style.display='none'"
+          />
+        </div>
+        <span class="name">{service.name}</span>
+      </a>
     </div>
   {/each}
+
+  <!-- Add button — same grid slot as cards -->
+  <button class="add-card" onclick={openDialog} title="Add service">
+    <div class="add-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </div>
+    <span class="name muted">Add</span>
+  </button>
+</div>
+
+<!-- Add Service Dialog -->
+{#if showDialog}
+  <div class="overlay" role="presentation" onclick={() => showDialog = false}>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="Add service" onclick={(e) => e.stopPropagation()}>
+      <h3 class="dialog-title">Add Service</h3>
+
+      <div class="field">
+        <label class="field-label" for="svc-name">Name</label>
+        <input id="svc-name" class="field-input" type="text" bind:value={form.name} placeholder="Jellyfin" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="svc-url">URL</label>
+        <input id="svc-url" class="field-input" type="url" bind:value={form.url} placeholder="http://pi.local:8096" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="svc-icon">
+          Icon URL
+          <span class="optional">optional — leave blank to auto-detect</span>
+        </label>
+        <input id="svc-icon" class="field-input" type="url" bind:value={form.icon} placeholder="http://pi.local:8096/favicon.ico" autocomplete="off" />
+      </div>
+
+      {#if error}
+        <p class="error">{error}</p>
+      {/if}
+
+      <div class="actions">
+        <button class="btn-cancel" onclick={() => showDialog = false}>Cancel</button>
+        <button class="btn-add" onclick={addService}>Add</button>
+      </div>
+    </div>
+  </div>
 {/if}
 
 <style>
-  .no-results {
-    font-size: 0.875rem;
-    color: #484f58;
-    margin: 0;
-    padding: 2rem 0;
-  }
-
-  .service-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1.75rem;
-  }
-  .service-group:last-child { margin-bottom: 0; }
-
-  .group-label {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-  }
-
-  .group-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .group-name {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: #8b949e;
-  }
-
-  .group-count {
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 0.1rem 0.45rem;
-    border-radius: 999px;
-    background: #21262d;
-    color: #484f58;
-  }
-
+  /* ── Grid ── */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
   }
 
-  /* Card */
-  .card {
+  /* ── Card wrap (for remove button positioning) ── */
+  .wrap { position: relative; }
+
+  .remove-btn {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    z-index: 10;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ff3b30;
+    border: 2px solid white;
+    color: white;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.875rem;
-    padding: 0.875rem 1rem;
-    background: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 12px;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+
+  .wrap:hover .remove-btn { opacity: 1; }
+
+  /* ── Service card ── */
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 8px 12px;
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
     text-decoration: none;
-    color: inherit;
-    transition: border-color 0.2s, background 0.2s;
-    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    width: 100%;
   }
 
   .card:hover {
-    border-color: var(--color-border);
-    background: #1c2128;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06);
   }
 
-  .icon-wrap {
-    width: 42px;
-    height: 42px;
-    border-radius: 10px;
+  /* ── Icon ── */
+  .icon-box {
+    width: 58px;
+    height: 58px;
+    border-radius: 15px; /* iOS icon corner ratio */
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    transition: background 0.2s;
   }
 
-  .card:hover .icon-wrap {
-    background: var(--color-bg) !important;
+  .letter {
+    position: absolute;
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+    line-height: 1;
+    user-select: none;
   }
 
-  .info {
-    flex: 1;
+  .icon-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* ── Name ── */
+  .name {
+    font-size: 11px;
+    font-weight: 500;
+    color: #1c1c1e;
+    text-align: center;
+    line-height: 1.3;
+    max-width: 84px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .name.muted { color: #aeaeb2; }
+
+  /* ── Add button (same shape as card) ── */
+  .add-card {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 8px 12px;
+    background: transparent;
+    border: 1.5px dashed rgba(60,60,67,0.2);
+    border-radius: 18px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    width: 100%;
   }
 
-  .name {
-    font-size: 0.9rem;
+  .add-card:hover {
+    border-color: #007AFF;
+    background: rgba(0,122,255,0.04);
+  }
+
+  .add-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 15px;
+    background: rgba(60,60,67,0.07);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aeaeb2;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .add-card:hover .add-icon {
+    background: rgba(0,122,255,0.1);
+    color: #007AFF;
+  }
+
+  /* ── Dialog overlay ── */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .dialog {
+    background: white;
+    border-radius: 20px;
+    padding: 1.75rem;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .dialog-title {
+    font-size: 1.1rem;
     font-weight: 700;
-    color: #f0f6fc;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: #1c1c1e;
+    margin: 0;
+    letter-spacing: -0.02em;
   }
 
-  .desc {
-    font-size: 0.72rem;
-    color: #484f58;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  /* ── Form fields ── */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
   }
 
-  .arrow {
-    color: #30363d;
-    flex-shrink: 0;
-    transition: color 0.2s;
+  .field-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #6c6c70;
   }
 
-  .card:hover .arrow { color: var(--color); }
+  .optional {
+    font-weight: 400;
+    color: #aeaeb2;
+    margin-left: 0.3rem;
+  }
 
+  .field-input {
+    background: #f2f2f7;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 0.6rem 0.875rem;
+    font-size: 0.9rem;
+    color: #1c1c1e;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+
+  .field-input:focus { border-color: #007AFF; background: white; }
+  .field-input::placeholder { color: #aeaeb2; }
+
+  .error {
+    font-size: 0.8rem;
+    color: #ff3b30;
+    margin: 0;
+  }
+
+  /* ── Dialog actions ── */
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 0.25rem;
+  }
+
+  .btn-cancel {
+    padding: 0.55rem 1.1rem;
+    border-radius: 10px;
+    border: none;
+    background: rgba(60,60,67,0.1);
+    color: #1c1c1e;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+
+  .btn-cancel:hover { background: rgba(60,60,67,0.16); }
+
+  .btn-add {
+    padding: 0.55rem 1.4rem;
+    border-radius: 10px;
+    border: none;
+    background: #007AFF;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+
+  .btn-add:hover { background: #0071e3; }
+
+  /* ── Responsive ── */
   @media (max-width: 600px) {
-    .grid { grid-template-columns: 1fr 1fr; }
-  }
-
-  @media (max-width: 400px) {
-    .grid { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; }
   }
 </style>

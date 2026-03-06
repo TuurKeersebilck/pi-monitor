@@ -252,6 +252,7 @@ func getNetwork() NetworkStats {
 	}
 
 	elapsed := now.Sub(prevNetTime).Seconds()
+	old := prevNetStats // save before overwriting
 	prevNetStats = cur
 	prevNetTime = now
 
@@ -261,7 +262,7 @@ func getNetwork() NetworkStats {
 
 	var totalRx, totalTx float64
 	for iface, curVals := range cur {
-		if prev, ok := prevNetStats[iface]; ok {
+		if prev, ok := old[iface]; ok {
 			totalRx += float64(curVals[0]-prev[0]) / elapsed
 			totalTx += float64(curVals[1]-prev[1]) / elapsed
 		}
