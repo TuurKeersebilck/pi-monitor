@@ -35,13 +35,14 @@
 
 <style>
   .card {
-    background: #ffffff;
+    background: var(--card-bg);
     border-radius: 16px;
     padding: 1.25rem 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
     box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
+    transition: background 0.2s ease;
   }
 
   .card-header {
@@ -56,14 +57,14 @@
     gap: 0.5rem;
     font-size: 0.95rem;
     font-weight: 600;
-    color: #1c1c1e;
+    color: var(--text);
   }
 
   .badge {
     font-size: 0.62rem;
     font-weight: 700;
     letter-spacing: 0.06em;
-    color: #aeaeb2;
+    color: var(--text-3);
   }
 
   .stats-grid {
@@ -77,7 +78,7 @@
     flex-direction: column;
     gap: 0.25rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(60,60,67,0.1);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .stat:nth-last-child(-n+2) { border-bottom: none; padding-bottom: 0; }
@@ -86,14 +87,14 @@
     font-size: 0.62rem;
     font-weight: 700;
     letter-spacing: 0.07em;
-    color: #aeaeb2;
+    color: var(--text-3);
     text-transform: uppercase;
   }
 
   .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1c1c1e;
+    color: var(--text);
     letter-spacing: -0.02em;
   }
 

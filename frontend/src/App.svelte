@@ -16,6 +16,7 @@
   let showBgPanel = $state(false)
   let bgInput = $state('')
   let bgUploading = $state(false)
+  let darkMode = $state(false)
 
   // Config owned here — services + background persisted to backend
   let services = $state([])
@@ -56,6 +57,16 @@
     }
   }
 
+  function applyDark(dark) {
+    document.documentElement.classList.toggle('dark', dark)
+  }
+
+  function toggleDark() {
+    darkMode = !darkMode
+    localStorage.setItem('darkMode', String(darkMode))
+    applyDark(darkMode)
+  }
+
   function onServicesChange(updated) {
     services = updated
     saveConfig(services, bgInput)
@@ -86,7 +97,7 @@
     const body = document.body
     if (!value) {
       body.style.backgroundImage = ''
-      body.style.backgroundColor = '#f2f2f7'
+      body.style.backgroundColor = ''
       body.style.backgroundSize = ''
       body.style.backgroundPosition = ''
       body.style.backgroundAttachment = ''
@@ -139,6 +150,8 @@
   }
 
   onMount(() => {
+    darkMode = localStorage.getItem('darkMode') === 'true'
+    applyDark(darkMode)
     connect()
     tickClock()
     clockId = setInterval(tickClock, 1000)
@@ -162,6 +175,23 @@
         <span class="clock-time">{time}</span>
         <span class="clock-date">{date}</span>
       </div>
+
+      <!-- Dark mode toggle -->
+      <button class="icon-btn" onclick={toggleDark} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-label="Toggle dark mode">
+        {#if darkMode}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        {:else}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        {/if}
+      </button>
 
       <!-- Background setting -->
       <div class="bg-wrap">
@@ -282,13 +312,44 @@
 <style>
   :global(*) { box-sizing: border-box; }
 
+  :global(:root) {
+    --bg: #f2f2f7;
+    --card-bg: #ffffff;
+    --text: #1c1c1e;
+    --text-2: #6c6c70;
+    --text-3: #aeaeb2;
+    --header-bg: rgba(255,255,255,0.72);
+    --border: rgba(60,60,67,0.18);
+    --border-subtle: rgba(60,60,67,0.1);
+    --pill: rgba(60,60,67,0.08);
+    --pill-hover: rgba(60,60,67,0.14);
+    --input-bg: #f2f2f7;
+    --ring-track: #f2f2f7;
+  }
+
+  :global(.dark) {
+    --bg: #1c1c1e;
+    --card-bg: #2c2c2e;
+    --text: #f2f2f7;
+    --text-2: #aeaeb2;
+    --text-3: #636366;
+    --header-bg: rgba(28,28,30,0.82);
+    --border: rgba(255,255,255,0.12);
+    --border-subtle: rgba(255,255,255,0.08);
+    --pill: rgba(255,255,255,0.1);
+    --pill-hover: rgba(255,255,255,0.16);
+    --input-bg: #3a3a3c;
+    --ring-track: #3a3a3c;
+  }
+
   :global(body) {
     margin: 0;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-    background-color: #f2f2f7;
-    color: #1c1c1e;
+    background-color: var(--bg);
+    color: var(--text);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   .app { min-height: 100vh; display: flex; flex-direction: column; }
@@ -301,13 +362,14 @@
     gap: 1rem;
     padding: 0 2rem;
     height: 52px;
-    background: rgba(255,255,255,0.72);
+    background: var(--header-bg);
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 0.5px solid rgba(60,60,67,0.18);
+    border-bottom: 0.5px solid var(--border);
     position: sticky;
     top: 0;
     z-index: 20;
+    transition: background 0.2s ease;
   }
 
   .header-left { flex-shrink: 0; }
@@ -315,7 +377,7 @@
   .brand {
     font-size: 1rem;
     font-weight: 700;
-    color: #1c1c1e;
+    color: var(--text);
     letter-spacing: -0.02em;
   }
 
@@ -337,14 +399,14 @@
   .clock-time {
     font-size: 0.92rem;
     font-weight: 600;
-    color: #1c1c1e;
+    color: var(--text);
     letter-spacing: -0.01em;
     line-height: 1.15;
   }
 
   .clock-date {
     font-size: 0.65rem;
-    color: #6c6c70;
+    color: var(--text-2);
     line-height: 1.2;
   }
 
@@ -354,8 +416,8 @@
     height: 32px;
     border-radius: 8px;
     border: none;
-    background: rgba(60,60,67,0.08);
-    color: #6c6c70;
+    background: var(--pill);
+    color: var(--text-2);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -363,7 +425,7 @@
     transition: background 0.15s, color 0.15s;
   }
 
-  .icon-btn:hover { background: rgba(60,60,67,0.14); color: #1c1c1e; }
+  .icon-btn:hover { background: var(--pill-hover); color: var(--text); }
 
   /* Background panel */
   .bg-wrap { position: relative; }
@@ -373,10 +435,10 @@
     top: calc(100% + 8px);
     right: 0;
     width: 280px;
-    background: white;
+    background: var(--card-bg);
     border-radius: 14px;
     padding: 1rem;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.12);
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -386,7 +448,7 @@
   .bg-label {
     font-size: 0.78rem;
     font-weight: 600;
-    color: #6c6c70;
+    color: var(--text-2);
     margin: 0;
   }
 
@@ -396,8 +458,8 @@
     gap: 0.4rem;
     padding: 0.45rem 0.85rem;
     border-radius: 8px;
-    background: rgba(60,60,67,0.08);
-    color: #1c1c1e;
+    background: var(--pill);
+    color: var(--text);
     font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
@@ -406,28 +468,28 @@
     width: fit-content;
   }
 
-  .bg-upload-btn:hover { background: rgba(60,60,67,0.14); }
+  .bg-upload-btn:hover { background: var(--pill-hover); }
 
   .bg-or {
     font-size: 0.72rem;
-    color: #aeaeb2;
+    color: var(--text-3);
   }
 
   .bg-input {
-    background: #f2f2f7;
+    background: var(--input-bg);
     border: 1px solid transparent;
     border-radius: 8px;
     padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
-    color: #1c1c1e;
+    color: var(--text);
     outline: none;
     font-family: inherit;
     transition: border-color 0.15s;
     width: 100%;
   }
 
-  .bg-input:focus { border-color: #007AFF; background: white; }
-  .bg-input::placeholder { color: #aeaeb2; }
+  .bg-input:focus { border-color: #007AFF; background: var(--card-bg); }
+  .bg-input::placeholder { color: var(--text-3); }
 
   .bg-actions {
     display: flex;
@@ -439,8 +501,8 @@
     padding: 0.4rem 0.9rem;
     border-radius: 8px;
     border: none;
-    background: rgba(60,60,67,0.1);
-    color: #1c1c1e;
+    background: var(--pill);
+    color: var(--text);
     font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
@@ -509,7 +571,7 @@
   .section-heading {
     font-size: 1.3rem;
     font-weight: 700;
-    color: #1c1c1e;
+    color: var(--text);
     margin: 0 0 0.2rem;
     letter-spacing: -0.02em;
   }
@@ -570,7 +632,7 @@
     font-weight: 700;
     letter-spacing: 0.07em;
     text-transform: uppercase;
-    color: #aeaeb2;
+    color: var(--text-3);
   }
 
   .group-count {
@@ -578,8 +640,8 @@
     font-weight: 700;
     padding: 0.1rem 0.4rem;
     border-radius: 999px;
-    background: rgba(60,60,67,0.08);
-    color: #6c6c70;
+    background: var(--pill);
+    color: var(--text-2);
   }
 
   .containers-grid {
@@ -595,8 +657,8 @@
     justify-content: space-between;
     padding: 1rem 2rem;
     font-size: 0.7rem;
-    color: #aeaeb2;
-    border-top: 0.5px solid rgba(60,60,67,0.12);
+    color: var(--text-3);
+    border-top: 0.5px solid var(--border-subtle);
   }
 
   /* ── Responsive ── */

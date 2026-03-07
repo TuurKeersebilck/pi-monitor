@@ -189,11 +189,11 @@
     align-items: center;
     gap: 8px;
     padding: 14px 8px 12px;
-    background: white;
+    background: var(--card-bg);
     border-radius: 18px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
     text-decoration: none;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
     width: 100%;
   }
 
@@ -234,7 +234,7 @@
   .name {
     font-size: 11px;
     font-weight: 500;
-    color: #1c1c1e;
+    color: var(--text);
     text-align: center;
     line-height: 1.3;
     max-width: 84px;
@@ -243,7 +243,7 @@
     white-space: nowrap;
   }
 
-  .name.muted { color: #aeaeb2; }
+  .name.muted { color: var(--text-3); }
 
   .add-card {
     display: flex;
@@ -252,7 +252,7 @@
     gap: 8px;
     padding: 14px 8px 12px;
     background: transparent;
-    border: 1.5px dashed rgba(60,60,67,0.2);
+    border: 1.5px dashed var(--border);
     border-radius: 18px;
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s;
@@ -265,11 +265,11 @@
     width: 58px;
     height: 58px;
     border-radius: 15px;
-    background: rgba(60,60,67,0.07);
+    background: var(--pill);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #aeaeb2;
+    color: var(--text-3);
     transition: background 0.15s, color 0.15s;
   }
 
@@ -290,45 +290,46 @@
   }
 
   .dialog {
-    background: white;
+    background: var(--card-bg);
     border-radius: 20px;
     padding: 1.75rem;
     width: 100%;
     max-width: 380px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.1);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.15);
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    transition: background 0.2s ease;
   }
 
   .dialog-title {
     font-size: 1.1rem;
     font-weight: 700;
-    color: #1c1c1e;
+    color: var(--text);
     margin: 0;
     letter-spacing: -0.02em;
   }
 
   .field { display: flex; flex-direction: column; gap: 0.35rem; }
 
-  .field-label { font-size: 0.78rem; font-weight: 600; color: #6c6c70; }
+  .field-label { font-size: 0.78rem; font-weight: 600; color: var(--text-2); }
 
-  .optional { font-weight: 400; color: #aeaeb2; margin-left: 0.3rem; }
+  .optional { font-weight: 400; color: var(--text-3); margin-left: 0.3rem; }
 
   .field-input {
-    background: #f2f2f7;
+    background: var(--input-bg);
     border: 1px solid transparent;
     border-radius: 10px;
     padding: 0.6rem 0.875rem;
     font-size: 0.9rem;
-    color: #1c1c1e;
+    color: var(--text);
     outline: none;
     font-family: inherit;
     transition: border-color 0.15s;
   }
 
-  .field-input:focus { border-color: #007AFF; background: white; }
-  .field-input::placeholder { color: #aeaeb2; }
+  .field-input:focus { border-color: #007AFF; background: var(--card-bg); }
+  .field-input::placeholder { color: var(--text-3); }
 
   /* Icon picker */
   .icon-pick { display: flex; gap: 0.75rem; align-items: flex-start; }
@@ -337,7 +338,7 @@
     width: 48px;
     height: 48px;
     border-radius: 12px;
-    background: #f2f2f7;
+    background: var(--input-bg);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -353,8 +354,8 @@
     gap: 0.4rem;
     padding: 0.4rem 0.8rem;
     border-radius: 8px;
-    background: rgba(60,60,67,0.08);
-    color: #1c1c1e;
+    background: var(--pill);
+    color: var(--text);
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
@@ -363,10 +364,10 @@
     transition: background 0.15s;
   }
 
-  .upload-btn:hover { background: rgba(60,60,67,0.14); }
+  .upload-btn:hover { background: var(--pill-hover); }
   .upload-btn.disabled { opacity: 0.5; pointer-events: none; }
 
-  .icon-or { font-size: 0.72rem; color: #aeaeb2; }
+  .icon-or { font-size: 0.72rem; color: var(--text-3); }
 
   .icon-url { font-size: 0.82rem; padding: 0.45rem 0.75rem; }
 
@@ -390,8 +391,8 @@
     padding: 0.55rem 1.1rem;
     border-radius: 10px;
     border: none;
-    background: rgba(60,60,67,0.1);
-    color: #1c1c1e;
+    background: var(--pill);
+    color: var(--text);
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
@@ -399,7 +400,7 @@
     transition: background 0.15s;
   }
 
-  .btn-cancel:hover { background: rgba(60,60,67,0.16); }
+  .btn-cancel:hover { background: var(--pill-hover); }
 
   .btn-add {
     padding: 0.55rem 1.4rem;

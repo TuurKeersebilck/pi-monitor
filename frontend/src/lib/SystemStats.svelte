@@ -100,7 +100,7 @@
   }
 
   .gauge-card {
-    background: #ffffff;
+    background: var(--card-bg);
     border-radius: 16px;
     padding: 1.5rem 1rem 1.25rem;
     display: flex;
@@ -108,13 +108,14 @@
     align-items: center;
     gap: 0.5rem;
     box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
+    transition: background 0.2s ease;
   }
 
   .ring { width: 120px; height: 120px; }
 
   .bg {
     fill: none;
-    stroke: #f2f2f7;
+    stroke: var(--ring-track);
     stroke-width: 2.8;
   }
 
@@ -126,7 +127,7 @@
   }
 
   .val {
-    fill: #1c1c1e;
+    fill: var(--text);
     font-size: 7.5px;
     font-weight: 700;
     text-anchor: middle;
@@ -135,14 +136,14 @@
 
   .label {
     font-size: 0.8rem;
-    color: #6c6c70;
+    color: var(--text-2);
     font-weight: 500;
     text-align: center;
   }
 
   .sub {
     font-size: 0.68rem;
-    color: #aeaeb2;
+    color: var(--text-3);
     text-align: center;
   }
 
@@ -165,7 +166,7 @@
   .net-val {
     font-size: 0.95rem;
     font-weight: 600;
-    color: #1c1c1e;
+    color: var(--text);
     letter-spacing: -0.01em;
     white-space: nowrap;
   }
