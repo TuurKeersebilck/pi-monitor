@@ -4,8 +4,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/tuurk/dashboard/internal/api"
+	"github.com/tuurk/dashboard/internal/config"
 	"github.com/tuurk/dashboard/internal/docker"
 	"github.com/tuurk/dashboard/internal/immich"
 	"github.com/tuurk/dashboard/internal/pihole"
@@ -19,6 +21,17 @@ func main() {
 	immichAPIKey := getenv("IMMICH_API_KEY", "")
 	staticDir := getenv("STATIC_DIR", "/app/frontend/dist")
 	listenAddr := getenv("LISTEN_ADDR", ":8080")
+	dataDir := getenv("DATA_DIR", "/app/data")
+
+	cfgStore, err := config.NewStore(dataDir)
+	if err != nil {
+		log.Fatalf("failed to init config store: %v", err)
+	}
+
+	uploadsDir := filepath.Join(dataDir, "uploads")
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		log.Fatalf("failed to create uploads dir: %v", err)
+	}
 
 	dockerClient, err := docker.NewClient()
 	if err != nil {
@@ -38,7 +51,7 @@ func main() {
 
 	hub := ws.NewHub(dockerClient, piholeClient, immichClient)
 
-	handler := api.NewHandler(hub)
+	handler := api.NewHandler(hub, cfgStore, uploadsDir)
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux, staticDir)
 

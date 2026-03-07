@@ -15,6 +15,10 @@
   let date = $state('')
   let showBgPanel = $state(false)
   let bgInput = $state('')
+  let bgUploading = $state(false)
+
+  // Config owned here — services + background persisted to backend
+  let services = $state([])
   let ws
 
   // Group Docker containers
@@ -27,6 +31,35 @@
     }
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
   })
+
+  async function loadConfig() {
+    try {
+      const res = await fetch('/api/config')
+      const cfg = await res.json()
+      services = cfg.services ?? []
+      bgInput = cfg.background ?? ''
+      if (bgInput) applyBg(bgInput)
+    } catch (e) {
+      console.error('Failed to load config:', e)
+    }
+  }
+
+  async function saveConfig(newServices, newBg) {
+    try {
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ services: newServices, background: newBg }),
+      })
+    } catch (e) {
+      console.error('Failed to save config:', e)
+    }
+  }
+
+  function onServicesChange(updated) {
+    services = updated
+    saveConfig(services, bgInput)
+  }
 
   function connect() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -71,16 +104,37 @@
     }
   }
 
+  async function handleBgFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    bgUploading = true
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      const { url } = await res.json()
+      bgInput = url
+      applyBg(url)
+      saveConfig(services, url)
+      showBgPanel = false
+    } catch {
+      console.error('Background upload failed')
+    } finally {
+      bgUploading = false
+      e.target.value = ''
+    }
+  }
+
   function saveBg() {
-    localStorage.setItem('dashboard-bg', bgInput)
     applyBg(bgInput)
+    saveConfig(services, bgInput)
     showBgPanel = false
   }
 
   function clearBg() {
-    localStorage.removeItem('dashboard-bg')
     bgInput = ''
     applyBg('')
+    saveConfig(services, '')
     showBgPanel = false
   }
 
@@ -88,8 +142,7 @@
     connect()
     tickClock()
     clockId = setInterval(tickClock, 1000)
-    const bg = localStorage.getItem('dashboard-bg')
-    if (bg) { bgInput = bg; applyBg(bg) }
+    loadConfig()
   })
 
   onDestroy(() => {
@@ -121,7 +174,16 @@
         </button>
         {#if showBgPanel}
           <div class="bg-panel">
-            <p class="bg-label">Background image URL or CSS color</p>
+            <p class="bg-label">Background</p>
+            <label class="bg-upload-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Upload image
+              <input type="file" accept="image/*" onchange={handleBgFile} style="display:none" />
+            </label>
+            <span class="bg-or">or paste URL / color</span>
             <input
               class="bg-input"
               type="text"
@@ -174,7 +236,7 @@
           <p class="section-sub">Hover a card to remove it</p>
         </div>
       </div>
-      <Bookmarks />
+      <Bookmarks services={services} onchange={onServicesChange} />
     </section>
 
     <!-- Widgets row -->
@@ -326,6 +388,29 @@
     font-weight: 600;
     color: #6c6c70;
     margin: 0;
+  }
+
+  .bg-upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    background: rgba(60,60,67,0.08);
+    color: #1c1c1e;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+    width: fit-content;
+  }
+
+  .bg-upload-btn:hover { background: rgba(60,60,67,0.14); }
+
+  .bg-or {
+    font-size: 0.72rem;
+    color: #aeaeb2;
   }
 
   .bg-input {

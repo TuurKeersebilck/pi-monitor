@@ -25,7 +25,7 @@ WORKDIR /app
 COPY --from=builder /build/dashboard .
 COPY --from=frontend /frontend/dist ./frontend/dist
 
-RUN chown -R app:app /app
+RUN mkdir -p /app/data/uploads && chown -R app:app /app
 USER app
 
 EXPOSE 8080

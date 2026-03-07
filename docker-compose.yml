@@ -9,6 +9,7 @@ services:
       - "991"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - dashboard-data:/app/data
     networks:
       - proxy
     deploy:
@@ -20,3 +21,6 @@ services:
 networks:
   proxy:
     external: true
+
+volumes:
+  dashboard-data:
