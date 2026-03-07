@@ -72,8 +72,10 @@
         </svg>
       </button>
       <a class="card" href={service.url} target="_blank" rel="noopener noreferrer">
-        <div class="icon-box" style="background:{letterColor(service.name)}">
-          <span class="letter">{service.name[0].toUpperCase()}</span>
+        <div class="icon-box" style={service.icon ? '' : `background:${letterColor(service.name)}`}>
+          {#if !service.icon}
+            <span class="letter">{service.name[0].toUpperCase()}</span>
+          {/if}
           <img
             src={iconSrc(service)}
             alt=""
@@ -97,8 +99,8 @@
 </div>
 
 {#if showDialog}
-  <div class="overlay" role="presentation" onclick={() => showDialog = false}>
-    <div class="dialog" role="dialog" aria-modal="true" aria-label="Add service" onclick={(e) => e.stopPropagation()}>
+  <div class="overlay" role="presentation" onclick={() => showDialog = false} onkeydown={(e) => { if (e.key === 'Escape') showDialog = false }}>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="Add service" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
       <h3 class="dialog-title">Add Service</h3>
 
       <div class="field">
@@ -112,7 +114,7 @@
       </div>
 
       <div class="field">
-        <label class="field-label">Icon <span class="optional">optional — leave blank to auto-detect</span></label>
+        <label class="field-label" for="svc-icon-url">Icon <span class="optional">optional — leave blank to auto-detect</span></label>
         <div class="icon-pick">
           <div class="icon-preview-box">
             {#if form.icon}
@@ -133,7 +135,7 @@
               <input type="file" accept="image/*" onchange={handleIconFile} disabled={uploading} style="display:none" />
             </label>
             <span class="icon-or">or paste URL</span>
-            <input class="field-input icon-url" type="text" bind:value={form.icon} placeholder="https://example.com/icon.png" autocomplete="off" />
+            <input id="svc-icon-url" class="field-input icon-url" type="text" bind:value={form.icon} placeholder="https://example.com/icon.png" autocomplete="off" />
             {#if form.icon}
               <button class="clear-icon" onclick={() => form.icon = ''}>Clear</button>
             {/if}
