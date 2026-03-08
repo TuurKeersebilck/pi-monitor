@@ -7,6 +7,7 @@
   import Bookmarks from './lib/Bookmarks.svelte'
 
   let system = $state(null)
+  let history = $state([])
   let containers = $state([])
   let pihole = $state(null)
   let immich = $state(null)
@@ -78,7 +79,10 @@
     ws.onopen = () => { connected = true }
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
-      if (data.system) system = data.system
+      if (data.system) {
+        system = data.system
+        history = [...history.slice(-119), data.system]
+      }
       if (data.containers) containers = data.containers
       if (data.pihole) pihole = data.pihole
       if (data.immich) immich = data.immich
@@ -254,7 +258,7 @@
             <span class="uptime-badge">↑ {system.info.uptime}</span>
           {/if}
         </div>
-        <SystemStats {system} />
+        <SystemStats {system} {history} />
       </section>
     {/if}
 
@@ -579,7 +583,7 @@
   .section-sub {
     margin: 0;
     font-size: 0.78rem;
-    color: #aeaeb2;
+    color: var(--text-3);
     display: flex;
     align-items: center;
     flex-wrap: wrap;
