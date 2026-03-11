@@ -439,10 +439,16 @@
     top: calc(100% + 8px);
     right: 0;
     width: 280px;
-    background: var(--card-bg);
-    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(28px) saturate(1.8);
+    -webkit-backdrop-filter: blur(28px) saturate(1.8);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 18px;
     padding: 1rem;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.12);
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.22),
+      0 2px 8px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
     display: flex;
     flex-direction: column;
     gap: 0.75rem;

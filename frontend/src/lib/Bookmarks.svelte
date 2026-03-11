@@ -191,17 +191,27 @@
     align-items: center;
     gap: 8px;
     padding: 14px 8px 12px;
-    background: var(--card-bg);
-    border-radius: 18px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 20px;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.12),
+      0 1px 3px rgba(0, 0, 0, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
     text-decoration: none;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     width: 100%;
   }
 
   .card:hover {
+    background: rgba(255, 255, 255, 0.11);
     transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.16),
+      0 2px 6px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
 
   .icon-box {
@@ -292,16 +302,21 @@
   }
 
   .dialog {
-    background: var(--card-bg);
-    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(28px) saturate(1.8);
+    -webkit-backdrop-filter: blur(28px) saturate(1.8);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 24px;
     padding: 1.75rem;
     width: 100%;
     max-width: 380px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.15);
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.28),
+      0 4px 16px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    transition: background 0.2s ease;
   }
 
   .dialog-title {

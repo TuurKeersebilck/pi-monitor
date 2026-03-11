@@ -35,14 +35,20 @@
 
 <style>
   .card {
-    background: var(--card-bg);
-    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 20px;
     padding: 1.25rem 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
-    transition: background 0.2s ease;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.12),
+      0 1px 3px rgba(0, 0, 0, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
   }
 
   .card-header {

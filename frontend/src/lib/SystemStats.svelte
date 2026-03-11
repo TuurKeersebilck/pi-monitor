@@ -22,7 +22,6 @@
     return values.reduce((a, b) => a + b, 0) / values.length
   }
 
-  // Build SVG polyline points, returns {points, avgY}
   function sparkPoints(values, W, H, minV, maxV) {
     if (values.length < 2) return { points: '', avgY: H / 2 }
     const range = maxV - minV || 1
@@ -36,7 +35,6 @@
     return { points, avgY, avgVal: a }
   }
 
-  // History series
   let cpuSeries    = $derived(history.map(h => h.cpu?.usage_percent ?? 0))
   let ramSeries    = $derived(history.map(h => h.ram?.usage_percent ?? 0))
   let diskSeries   = $derived(history.map(h => h.disk?.usage_percent ?? 0))
@@ -53,6 +51,13 @@
   let netMax  = $derived(Math.max(...txSeries, ...rxSeries, 1))
   let txSpk   = $derived(sparkPoints(txSeries, W, H, 0, netMax))
   let rxSpk   = $derived(sparkPoints(rxSeries, W, H, 0, netMax))
+
+  // Human-readable time window
+  let windowLabel = $derived(() => {
+    const s = history.length
+    if (s < 60) return `${s}s`
+    return `${Math.floor(s / 60)}m ${s % 60}s`
+  })
 </script>
 
 <!-- Toggle -->
@@ -69,8 +74,14 @@
     <!-- CPU -->
     <div class="gauge-card">
       <svg class="ring" viewBox="0 0 36 36">
+        <defs>
+          <filter id="glow-cpu" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
         <path class="bg" d={PATH}/>
-        <path class="fill" style="stroke:#007AFF" stroke-dasharray="{system.cpu.usage_percent},100" d={PATH}/>
+        <path class="fill" style="stroke:#007AFF" stroke-dasharray="{system.cpu.usage_percent},100" d={PATH} filter="url(#glow-cpu)"/>
         <text x="18" y="16.5" class="val">{system.cpu.usage_percent}%</text>
       </svg>
       <span class="label">CPU</span>
@@ -79,8 +90,14 @@
     <!-- RAM -->
     <div class="gauge-card">
       <svg class="ring" viewBox="0 0 36 36">
+        <defs>
+          <filter id="glow-ram" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
         <path class="bg" d={PATH}/>
-        <path class="fill" style="stroke:#34c759" stroke-dasharray="{system.ram.usage_percent},100" d={PATH}/>
+        <path class="fill" style="stroke:#34c759" stroke-dasharray="{system.ram.usage_percent},100" d={PATH} filter="url(#glow-ram)"/>
         <text x="18" y="16.5" class="val">{system.ram.usage_percent}%</text>
       </svg>
       <span class="label">RAM</span>
@@ -90,8 +107,14 @@
     <!-- Disk -->
     <div class="gauge-card">
       <svg class="ring" viewBox="0 0 36 36">
+        <defs>
+          <filter id="glow-disk" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
         <path class="bg" d={PATH}/>
-        <path class="fill" style="stroke:#ff9500" stroke-dasharray="{system.disk.usage_percent},100" d={PATH}/>
+        <path class="fill" style="stroke:#ff9500" stroke-dasharray="{system.disk.usage_percent},100" d={PATH} filter="url(#glow-disk)"/>
         <text x="18" y="16.5" class="val">{system.disk.usage_percent}%</text>
       </svg>
       <span class="label">Disk</span>
@@ -102,8 +125,14 @@
     {#if system.temp?.cpu_temp_c}
       <div class="gauge-card">
         <svg class="ring" viewBox="0 0 36 36">
+          <defs>
+            <filter id="glow-temp" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="1.2" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
           <path class="bg" d={PATH}/>
-          <path class="fill" style="stroke:{tempColor(system.temp.cpu_temp_c)}" stroke-dasharray="{system.temp.cpu_temp_c},100" d={PATH}/>
+          <path class="fill" style="stroke:{tempColor(system.temp.cpu_temp_c)}" stroke-dasharray="{system.temp.cpu_temp_c},100" d={PATH} filter="url(#glow-temp)"/>
           <text x="18" y="16.5" class="val">{system.temp.cpu_temp_c}°</text>
         </svg>
         <span class="label">Temp</span>
@@ -149,19 +178,19 @@
       <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
         <defs>
           <linearGradient id="g-cpu" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#007AFF" stop-opacity="0.25"/>
+            <stop offset="0%" stop-color="#007AFF" stop-opacity="0.3"/>
             <stop offset="100%" stop-color="#007AFF" stop-opacity="0"/>
           </linearGradient>
         </defs>
         {#if cpuSpk.points}
           <polygon points="{cpuSpk.points} {W},{H} 0,{H}" fill="url(#g-cpu)"/>
           <polyline points={cpuSpk.points} fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-          <line x1="0" x2={W} y1={cpuSpk.avgY} y2={cpuSpk.avgY} stroke="#007AFF" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.5"/>
+          <line x1="0" x2={W} y1={cpuSpk.avgY} y2={cpuSpk.avgY} stroke="#007AFF" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
         {/if}
       </svg>
       <div class="graph-footer">
         <span class="avg-label">avg {cpuSpk.avgVal?.toFixed(1) ?? '—'}%</span>
-        <span class="graph-sub">last {history.length}s</span>
+        <span class="graph-sub">last {windowLabel()}</span>
       </div>
     </div>
 
@@ -174,19 +203,19 @@
       <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
         <defs>
           <linearGradient id="g-ram" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#34c759" stop-opacity="0.25"/>
+            <stop offset="0%" stop-color="#34c759" stop-opacity="0.3"/>
             <stop offset="100%" stop-color="#34c759" stop-opacity="0"/>
           </linearGradient>
         </defs>
         {#if ramSpk.points}
           <polygon points="{ramSpk.points} {W},{H} 0,{H}" fill="url(#g-ram)"/>
           <polyline points={ramSpk.points} fill="none" stroke="#34c759" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-          <line x1="0" x2={W} y1={ramSpk.avgY} y2={ramSpk.avgY} stroke="#34c759" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.5"/>
+          <line x1="0" x2={W} y1={ramSpk.avgY} y2={ramSpk.avgY} stroke="#34c759" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
         {/if}
       </svg>
       <div class="graph-footer">
         <span class="avg-label">avg {ramSpk.avgVal?.toFixed(1) ?? '—'}%</span>
-        <span class="graph-sub">{system.ram.used_mb} / {system.ram.total_mb} MB</span>
+        <span class="graph-sub">{system.ram.used_mb} / {system.ram.total_mb} MB · {windowLabel()}</span>
       </div>
     </div>
 
@@ -199,19 +228,19 @@
       <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
         <defs>
           <linearGradient id="g-disk" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#ff9500" stop-opacity="0.25"/>
+            <stop offset="0%" stop-color="#ff9500" stop-opacity="0.3"/>
             <stop offset="100%" stop-color="#ff9500" stop-opacity="0"/>
           </linearGradient>
         </defs>
         {#if diskSpk.points}
           <polygon points="{diskSpk.points} {W},{H} 0,{H}" fill="url(#g-disk)"/>
           <polyline points={diskSpk.points} fill="none" stroke="#ff9500" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-          <line x1="0" x2={W} y1={diskSpk.avgY} y2={diskSpk.avgY} stroke="#ff9500" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.5"/>
+          <line x1="0" x2={W} y1={diskSpk.avgY} y2={diskSpk.avgY} stroke="#ff9500" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
         {/if}
       </svg>
       <div class="graph-footer">
         <span class="avg-label">avg {diskSpk.avgVal?.toFixed(1) ?? '—'}%</span>
-        <span class="graph-sub">{system.disk.used_gb} / {system.disk.total_gb} GB</span>
+        <span class="graph-sub">{system.disk.used_gb} / {system.disk.total_gb} GB · {windowLabel()}</span>
       </div>
     </div>
 
@@ -226,19 +255,19 @@
         <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
           <defs>
             <linearGradient id="g-temp" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="{color}" stop-opacity="0.25"/>
+              <stop offset="0%" stop-color="{color}" stop-opacity="0.3"/>
               <stop offset="100%" stop-color="{color}" stop-opacity="0"/>
             </linearGradient>
           </defs>
           {#if tempSpk.points}
             <polygon points="{tempSpk.points} {W},{H} 0,{H}" fill="url(#g-temp)"/>
             <polyline points={tempSpk.points} fill="none" stroke={color} stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-            <line x1="0" x2={W} y1={tempSpk.avgY} y2={tempSpk.avgY} stroke={color} stroke-width="0.8" stroke-dasharray="4,3" opacity="0.5"/>
+            <line x1="0" x2={W} y1={tempSpk.avgY} y2={tempSpk.avgY} stroke={color} stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
           {/if}
         </svg>
         <div class="graph-footer">
           <span class="avg-label">avg {tempSpk.avgVal?.toFixed(1) ?? '—'}°C</span>
-          <span class="graph-sub">cpu temperature</span>
+          <span class="graph-sub">cpu temp · {windowLabel()}</span>
         </div>
       </div>
     {/if}
@@ -256,11 +285,11 @@
         <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
           <defs>
             <linearGradient id="g-tx" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#34c759" stop-opacity="0.2"/>
+              <stop offset="0%" stop-color="#34c759" stop-opacity="0.22"/>
               <stop offset="100%" stop-color="#34c759" stop-opacity="0"/>
             </linearGradient>
             <linearGradient id="g-rx" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#007AFF" stop-opacity="0.2"/>
+              <stop offset="0%" stop-color="#007AFF" stop-opacity="0.22"/>
               <stop offset="100%" stop-color="#007AFF" stop-opacity="0"/>
             </linearGradient>
           </defs>
@@ -275,6 +304,7 @@
         </svg>
         <div class="graph-footer">
           <span class="avg-label" style="color:#34c759">↑ avg {fmtBytes(txSpk.avgVal ?? 0)}</span>
+          <span class="graph-sub">{windowLabel()}</span>
           <span class="avg-label" style="color:#007AFF">↓ avg {fmtBytes(rxSpk.avgVal ?? 0)}</span>
         </div>
       </div>
@@ -283,24 +313,27 @@
 {/if}
 
 <style>
-  /* Toggle */
+  /* ── Toggle ── */
   .top-bar {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.875rem;
   }
 
   .view-toggle {
     display: flex;
-    background: var(--pill);
-    border-radius: 8px;
-    padding: 2px;
+    background: rgba(120, 120, 128, 0.12);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    padding: 3px;
     gap: 2px;
   }
 
   .view-toggle button {
-    padding: 0.25rem 0.75rem;
-    border-radius: 6px;
+    padding: 0.28rem 0.85rem;
+    border-radius: 7px;
     border: none;
     background: transparent;
     color: var(--text-2);
@@ -308,49 +341,73 @@
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    transition: background 0.2s, color 0.2s;
+    letter-spacing: -0.01em;
+    transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
   }
 
   .view-toggle button.active {
-    background: var(--card-bg);
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     color: var(--text);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.14), inset 0 0.5px 0 rgba(255,255,255,0.25);
+    border: 1px solid rgba(255, 255, 255, 0.18);
   }
 
-  /* View animation */
+  /* ── View animation ── */
   .view-enter {
-    animation: fadeUp 0.2s ease both;
+    animation: fadeUp 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
 
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(8px) scale(0.99); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ── Shared glass card mixin ── */
+  .gauge-card,
+  .graph-card {
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 20px;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.12),
+      0 1px 3px rgba(0, 0, 0, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .gauge-card:hover,
+  .graph-card:hover {
+    background: rgba(255, 255, 255, 0.11);
+    box-shadow:
+      0 6px 32px rgba(0, 0, 0, 0.16),
+      0 1px 4px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
 
   /* ── Gauges ── */
   .gauges {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
-    gap: 1rem;
+    gap: 0.875rem;
   }
 
   .gauge-card {
-    background: var(--card-bg);
-    border-radius: 16px;
     padding: 1.5rem 1rem 1.25rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
-    transition: background 0.2s ease;
   }
 
   .ring { width: 120px; height: 120px; }
 
   .bg {
     fill: none;
-    stroke: var(--ring-track);
+    stroke: rgba(120, 120, 128, 0.2);
     stroke-width: 2.8;
   }
 
@@ -358,7 +415,7 @@
     fill: none;
     stroke-width: 2.8;
     stroke-linecap: round;
-    transition: stroke-dasharray 0.5s ease;
+    transition: stroke-dasharray 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
   }
 
   .val {
@@ -367,17 +424,19 @@
     font-weight: 700;
     text-anchor: middle;
     dominant-baseline: middle;
+    letter-spacing: -0.02em;
   }
 
   .label {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: var(--text-2);
     font-weight: 500;
     text-align: center;
+    letter-spacing: -0.01em;
   }
 
   .sub {
-    font-size: 0.68rem;
+    font-size: 0.67rem;
     color: var(--text-3);
     text-align: center;
   }
@@ -402,7 +461,7 @@
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     white-space: nowrap;
   }
 
@@ -410,7 +469,7 @@
   .graphs {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 1rem;
+    gap: 0.875rem;
   }
 
   .graph-card--wide {
@@ -418,14 +477,10 @@
   }
 
   .graph-card {
-    background: var(--card-bg);
-    border-radius: 16px;
     padding: 1rem 1.1rem 0.85rem;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
-    transition: background 0.2s ease;
+    gap: 0.55rem;
   }
 
   .graph-header {
@@ -435,22 +490,24 @@
   }
 
   .graph-label {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     font-weight: 600;
     color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   .graph-current {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
   }
 
   .sparkline {
     width: 100%;
     height: 72px;
     display: block;
-    border-radius: 6px;
+    border-radius: 8px;
     overflow: visible;
   }
 
@@ -462,14 +519,16 @@
   }
 
   .avg-label {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 600;
     color: var(--text-3);
+    letter-spacing: -0.01em;
   }
 
   .graph-sub {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     color: var(--text-3);
+    opacity: 0.7;
   }
 
   .net-legend {
@@ -477,6 +536,7 @@
     gap: 0.75rem;
     font-size: 0.8rem;
     font-weight: 600;
+    letter-spacing: -0.02em;
   }
 
   @media (max-width: 768px) {
