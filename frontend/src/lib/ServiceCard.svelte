@@ -26,19 +26,19 @@
 
 <style>
   .card {
-    background: rgba(255, 255, 255, 0.07);
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    border: 1px solid rgba(255, 255, 255, 0.13);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border: 1px solid var(--glass-border);
     border-radius: 16px;
     padding: 1rem 1.1rem;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
     box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.12),
-      0 1px 3px rgba(0, 0, 0, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      0 4px 24px var(--glass-shadow),
+      0 1px 3px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-shine);
     text-decoration: none;
     color: inherit;
     transition: box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
@@ -46,11 +46,11 @@
 
   .card.clickable { cursor: pointer; }
   .card.clickable:hover {
-    background: rgba(255, 255, 255, 0.11);
+    background: var(--glass-bg-hover);
     box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.16),
-      0 2px 6px rgba(0, 0, 0, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      0 8px 32px var(--glass-shadow),
+      0 2px 6px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-shine);
     transform: translateY(-2px);
   }
 

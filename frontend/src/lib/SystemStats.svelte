@@ -322,10 +322,10 @@
 
   .view-toggle {
     display: flex;
-    background: rgba(120, 120, 128, 0.12);
-    backdrop-filter: blur(12px) saturate(1.4);
-    -webkit-backdrop-filter: blur(12px) saturate(1.4);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px) saturate(1.8);
+    -webkit-backdrop-filter: blur(12px) saturate(1.8);
+    border: 1px solid var(--glass-border);
     border-radius: 10px;
     padding: 3px;
     gap: 2px;
@@ -367,25 +367,25 @@
   /* ── Shared glass card mixin ── */
   .gauge-card,
   .graph-card {
-    background: rgba(255, 255, 255, 0.07);
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    border: 1px solid rgba(255, 255, 255, 0.13);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border: 1px solid var(--glass-border);
     border-radius: 20px;
     box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.12),
-      0 1px 3px rgba(0, 0, 0, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      0 4px 24px var(--glass-shadow),
+      0 1px 3px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-shine);
     transition: background 0.2s ease, box-shadow 0.2s ease;
   }
 
   .gauge-card:hover,
   .graph-card:hover {
-    background: rgba(255, 255, 255, 0.11);
+    background: var(--glass-bg-hover);
     box-shadow:
-      0 6px 32px rgba(0, 0, 0, 0.16),
-      0 1px 4px rgba(0, 0, 0, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      0 6px 32px var(--glass-shadow),
+      0 1px 4px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-shine);
   }
 
   /* ── Gauges ── */

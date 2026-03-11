@@ -191,27 +191,27 @@
     align-items: center;
     gap: 8px;
     padding: 14px 8px 12px;
-    background: rgba(255, 255, 255, 0.07);
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    border: 1px solid rgba(255, 255, 255, 0.13);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border: 1px solid var(--glass-border);
     border-radius: 20px;
     box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.12),
-      0 1px 3px rgba(0, 0, 0, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      0 4px 24px var(--glass-shadow),
+      0 1px 3px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-shine);
     text-decoration: none;
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     width: 100%;
   }
 
   .card:hover {
-    background: rgba(255, 255, 255, 0.11);
+    background: var(--glass-bg-hover);
     transform: translateY(-3px);
     box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.16),
-      0 2px 6px rgba(0, 0, 0, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      0 8px 32px var(--glass-shadow),
+      0 2px 6px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-shine);
   }
 
   .icon-box {
@@ -302,18 +302,18 @@
   }
 
   .dialog {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--glass-bg);
     backdrop-filter: blur(28px) saturate(1.8);
     -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid var(--glass-border);
     border-radius: 24px;
     padding: 1.75rem;
     width: 100%;
     max-width: 380px;
     box-shadow:
-      0 24px 60px rgba(0, 0, 0, 0.28),
-      0 4px 16px rgba(0, 0, 0, 0.15),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      0 24px 60px var(--glass-shadow),
+      0 4px 16px var(--glass-shadow),
+      inset 0 1px 0 var(--glass-shine);
     display: flex;
     flex-direction: column;
     gap: 1rem;
