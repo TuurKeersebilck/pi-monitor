@@ -3,7 +3,7 @@
   const fmt = (n) => n.toLocaleString()
 </script>
 
-<div class="card">
+<div class="card glass">
   <div class="card-header">
     <div class="card-title">
       <svg viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" width="16" height="16">
@@ -35,23 +35,10 @@
 
 <style>
   .card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(1.8);
-    -webkit-backdrop-filter: blur(20px) saturate(1.8);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
     padding: 1.25rem 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    box-shadow:
-      0 4px 24px var(--glass-shadow),
-      0 1px 3px var(--glass-shadow),
-      inset 0 1px 0 var(--glass-shine);
-    transform: translateZ(0);
-    will-change: transform;
-    isolation: isolate;
-    transition: background 0.2s ease, box-shadow 0.2s ease;
   }
 
   .card-header {

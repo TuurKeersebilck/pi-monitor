@@ -207,7 +207,7 @@
           </svg>
         </button>
         {#if showBgPanel}
-          <div class="bg-panel">
+          <div class="bg-panel glass-panel">
             <p class="bg-label">Background</p>
             <label class="bg-upload-btn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
@@ -314,62 +314,6 @@
 </div>
 
 <style>
-  :global(*) { box-sizing: border-box; }
-
-  :global(:root) {
-    --bg: #f2f2f7;
-    --card-bg: #ffffff;
-    --text: #1c1c1e;
-    --text-2: #6c6c70;
-    --text-3: #aeaeb2;
-    --header-bg: rgba(255,255,255,0.72);
-    --border: rgba(60,60,67,0.18);
-    --border-subtle: rgba(60,60,67,0.1);
-    --pill: rgba(60,60,67,0.08);
-    --pill-hover: rgba(60,60,67,0.14);
-    --input-bg: #f2f2f7;
-    --ring-track: #f2f2f7;
-    /* Glass material — light mode: white frosted */
-    --glass-bg: rgba(255, 255, 255, 0.62);
-    --glass-bg-hover: rgba(255, 255, 255, 0.74);
-    --glass-border: rgba(255, 255, 255, 0.7);
-    --glass-shine: rgba(255, 255, 255, 0.9);
-    --glass-shadow: rgba(0, 0, 0, 0.1);
-    --glass-input: rgba(0, 0, 0, 0.05);
-  }
-
-  :global(.dark) {
-    --bg: #1c1c1e;
-    --card-bg: #2c2c2e;
-    --text: #f2f2f7;
-    --text-2: #aeaeb2;
-    --text-3: #636366;
-    --header-bg: rgba(28,28,30,0.82);
-    --border: rgba(255,255,255,0.12);
-    --border-subtle: rgba(255,255,255,0.08);
-    --pill: rgba(255,255,255,0.1);
-    --pill-hover: rgba(255,255,255,0.16);
-    --input-bg: #3a3a3c;
-    --ring-track: #3a3a3c;
-    /* Glass material — dark mode: dark frosted */
-    --glass-bg: rgba(38, 38, 40, 0.72);
-    --glass-bg-hover: rgba(50, 50, 52, 0.8);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-shine: rgba(255, 255, 255, 0.08);
-    --glass-shadow: rgba(0, 0, 0, 0.3);
-    --glass-input: rgba(255, 255, 255, 0.06);
-  }
-
-  :global(body) {
-    margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-    background-color: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
-    transition: background-color 0.2s ease, color 0.2s ease;
-  }
-
   .app { min-height: 100vh; display: flex; flex-direction: column; }
 
   /* ── Header ── */
@@ -453,16 +397,8 @@
     top: calc(100% + 8px);
     right: 0;
     width: 280px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(28px) saturate(1.8);
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    border: 1px solid var(--glass-border);
     border-radius: 18px;
     padding: 1rem;
-    box-shadow:
-      0 12px 40px var(--glass-shadow),
-      0 2px 8px var(--glass-shadow),
-      inset 0 1px 0 var(--glass-shine);
     display: flex;
     flex-direction: column;
     gap: 0.75rem;

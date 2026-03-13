@@ -1,9 +1,7 @@
 <script>
-  import { fade } from 'svelte/transition'
-
   let { system, history = [] } = $props()
 
-  let view = $state('gauge') // 'gauge' | 'graph'
+  let view = $state('gauge')
 
   const PATH = "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
 
@@ -37,12 +35,12 @@
     return { points, avgY, avgVal: a }
   }
 
-  let cpuSeries    = $derived(history.map(h => h.cpu?.usage_percent ?? 0))
-  let ramSeries    = $derived(history.map(h => h.ram?.usage_percent ?? 0))
-  let diskSeries   = $derived(history.map(h => h.disk?.usage_percent ?? 0))
-  let tempSeries   = $derived(history.map(h => h.temp?.cpu_temp_c ?? 0))
-  let txSeries     = $derived(history.map(h => h.net?.tx_bytes_s ?? 0))
-  let rxSeries     = $derived(history.map(h => h.net?.rx_bytes_s ?? 0))
+  let cpuSeries  = $derived(history.map(h => h.cpu?.usage_percent ?? 0))
+  let ramSeries  = $derived(history.map(h => h.ram?.usage_percent ?? 0))
+  let diskSeries = $derived(history.map(h => h.disk?.usage_percent ?? 0))
+  let tempSeries = $derived(history.map(h => h.temp?.cpu_temp_c ?? 0))
+  let txSeries   = $derived(history.map(h => h.net?.tx_bytes_s ?? 0))
+  let rxSeries   = $derived(history.map(h => h.net?.rx_bytes_s ?? 0))
 
   const W = 260, H = 72
 
@@ -54,7 +52,6 @@
   let txSpk   = $derived(sparkPoints(txSeries, W, H, 0, netMax))
   let rxSpk   = $derived(sparkPoints(rxSeries, W, H, 0, netMax))
 
-  // Human-readable time window
   let windowLabel = $derived(() => {
     const s = history.length
     if (s < 60) return `${s}s`
@@ -62,79 +59,62 @@
   })
 </script>
 
+<!-- Shared SVG filter for ring glow (rendered once, invisible) -->
+<svg style="position:absolute;width:0;height:0" aria-hidden="true">
+  <defs>
+    <filter id="ring-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+</svg>
+
 <!-- Toggle -->
 <div class="top-bar">
-  <div class="view-toggle">
+  <div class="view-toggle glass">
     <button class:active={view === 'gauge'} onclick={() => view = 'gauge'}>Gauge</button>
     <button class:active={view === 'graph'} onclick={() => view = 'graph'}>Graph</button>
   </div>
 </div>
 
-<!-- Gauge view -->
-{#if view === 'gauge'}
-  <div class="gauges" transition:fade={{ duration: 180 }}>
-    <!-- CPU -->
-    <div class="gauge-card">
+<!-- Views container: grid-stacked crossfade -->
+<div class="views">
+  <!-- Gauge view -->
+  <div class="gauges" class:active={view === 'gauge'}>
+    <div class="gauge-card glass">
       <svg class="ring" viewBox="0 0 36 36">
-        <defs>
-          <filter id="glow-cpu" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="1.2" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
         <path class="bg" d={PATH}/>
-        <path class="fill" style="stroke:#007AFF" stroke-dasharray="{system.cpu.usage_percent},100" d={PATH} filter="url(#glow-cpu)"/>
+        <path class="fill" style="stroke:#007AFF" stroke-dasharray="{system.cpu.usage_percent},100" d={PATH} filter="url(#ring-glow)"/>
         <text x="18" y="16.5" class="val">{system.cpu.usage_percent}%</text>
       </svg>
       <span class="label">CPU</span>
     </div>
 
-    <!-- RAM -->
-    <div class="gauge-card">
+    <div class="gauge-card glass">
       <svg class="ring" viewBox="0 0 36 36">
-        <defs>
-          <filter id="glow-ram" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="1.2" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
         <path class="bg" d={PATH}/>
-        <path class="fill" style="stroke:#34c759" stroke-dasharray="{system.ram.usage_percent},100" d={PATH} filter="url(#glow-ram)"/>
+        <path class="fill" style="stroke:#34c759" stroke-dasharray="{system.ram.usage_percent},100" d={PATH} filter="url(#ring-glow)"/>
         <text x="18" y="16.5" class="val">{system.ram.usage_percent}%</text>
       </svg>
       <span class="label">RAM</span>
       <span class="sub">{system.ram.used_mb} / {system.ram.total_mb} MB</span>
     </div>
 
-    <!-- Disk -->
-    <div class="gauge-card">
+    <div class="gauge-card glass">
       <svg class="ring" viewBox="0 0 36 36">
-        <defs>
-          <filter id="glow-disk" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="1.2" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
         <path class="bg" d={PATH}/>
-        <path class="fill" style="stroke:#ff9500" stroke-dasharray="{system.disk.usage_percent},100" d={PATH} filter="url(#glow-disk)"/>
+        <path class="fill" style="stroke:#ff9500" stroke-dasharray="{system.disk.usage_percent},100" d={PATH} filter="url(#ring-glow)"/>
         <text x="18" y="16.5" class="val">{system.disk.usage_percent}%</text>
       </svg>
       <span class="label">Disk</span>
       <span class="sub">{system.disk.used_gb} / {system.disk.total_gb} GB</span>
     </div>
 
-    <!-- Temp -->
     {#if system.temp?.cpu_temp_c}
-      <div class="gauge-card">
+      <div class="gauge-card glass">
         <svg class="ring" viewBox="0 0 36 36">
-          <defs>
-            <filter id="glow-temp" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="1.2" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-          </defs>
           <path class="bg" d={PATH}/>
-          <path class="fill" style="stroke:{tempColor(system.temp.cpu_temp_c)}" stroke-dasharray="{system.temp.cpu_temp_c},100" d={PATH} filter="url(#glow-temp)"/>
+          <path class="fill" style="stroke:{tempColor(system.temp.cpu_temp_c)}" stroke-dasharray="{system.temp.cpu_temp_c},100" d={PATH} filter="url(#ring-glow)"/>
           <text x="18" y="16.5" class="val">{system.temp.cpu_temp_c}°</text>
         </svg>
         <span class="label">Temp</span>
@@ -142,21 +122,18 @@
       </div>
     {/if}
 
-    <!-- Network -->
     {#if system.net}
-      <div class="gauge-card net-card">
+      <div class="gauge-card glass net-card">
         <div class="net-rows">
           <div class="net-row">
             <svg viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="2.5" width="15" height="15">
-              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-              <polyline points="17 6 23 6 23 12"/>
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
             </svg>
             <span class="net-val">{fmtBytes(system.net.tx_bytes_s)}</span>
           </div>
           <div class="net-row">
             <svg viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2.5" width="15" height="15">
-              <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
-              <polyline points="17 18 23 18 23 12"/>
+              <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
             </svg>
             <span class="net-val">{fmtBytes(system.net.rx_bytes_s)}</span>
           </div>
@@ -166,13 +143,10 @@
       </div>
     {/if}
   </div>
-{/if}
 
-<!-- Graph view -->
-{#if view === 'graph'}
-  <div class="graphs" transition:fade={{ duration: 180 }}>
-    <!-- CPU graph -->
-    <div class="graph-card">
+  <!-- Graph view -->
+  <div class="graphs" class:active={view === 'graph'}>
+    <div class="graph-card glass">
       <div class="graph-header">
         <span class="graph-label">CPU</span>
         <span class="graph-current" style="color:#007AFF">{system.cpu.usage_percent}%</span>
@@ -191,13 +165,12 @@
         {/if}
       </svg>
       <div class="graph-footer">
-        <span class="avg-label">avg {cpuSpk.avgVal?.toFixed(1) ?? '—'}%</span>
-        <span class="graph-sub">last {windowLabel()}</span>
+        <span class="graph-meta">avg {cpuSpk.avgVal?.toFixed(1) ?? '—'}%</span>
+        <span class="graph-meta dim">last {windowLabel()}</span>
       </div>
     </div>
 
-    <!-- RAM graph -->
-    <div class="graph-card">
+    <div class="graph-card glass">
       <div class="graph-header">
         <span class="graph-label">RAM</span>
         <span class="graph-current" style="color:#34c759">{system.ram.usage_percent}%</span>
@@ -216,13 +189,12 @@
         {/if}
       </svg>
       <div class="graph-footer">
-        <span class="avg-label">avg {ramSpk.avgVal?.toFixed(1) ?? '—'}%</span>
-        <span class="graph-sub">{system.ram.used_mb} / {system.ram.total_mb} MB · {windowLabel()}</span>
+        <span class="graph-meta">avg {ramSpk.avgVal?.toFixed(1) ?? '—'}%</span>
+        <span class="graph-meta dim">{system.ram.used_mb} / {system.ram.total_mb} MB · {windowLabel()}</span>
       </div>
     </div>
 
-    <!-- Disk graph -->
-    <div class="graph-card">
+    <div class="graph-card glass">
       <div class="graph-header">
         <span class="graph-label">Disk</span>
         <span class="graph-current" style="color:#ff9500">{system.disk.usage_percent}%</span>
@@ -241,15 +213,14 @@
         {/if}
       </svg>
       <div class="graph-footer">
-        <span class="avg-label">avg {diskSpk.avgVal?.toFixed(1) ?? '—'}%</span>
-        <span class="graph-sub">{system.disk.used_gb} / {system.disk.total_gb} GB · {windowLabel()}</span>
+        <span class="graph-meta">avg {diskSpk.avgVal?.toFixed(1) ?? '—'}%</span>
+        <span class="graph-meta dim">{system.disk.used_gb} / {system.disk.total_gb} GB · {windowLabel()}</span>
       </div>
     </div>
 
-    <!-- Temp graph -->
     {#if system.temp?.cpu_temp_c}
       {@const color = tempColor(system.temp.cpu_temp_c)}
-      <div class="graph-card">
+      <div class="graph-card glass">
         <div class="graph-header">
           <span class="graph-label">Temp</span>
           <span class="graph-current" style="color:{color}">{system.temp.cpu_temp_c}°C</span>
@@ -268,15 +239,14 @@
           {/if}
         </svg>
         <div class="graph-footer">
-          <span class="avg-label">avg {tempSpk.avgVal?.toFixed(1) ?? '—'}°C</span>
-          <span class="graph-sub">cpu temp · {windowLabel()}</span>
+          <span class="graph-meta">avg {tempSpk.avgVal?.toFixed(1) ?? '—'}°C</span>
+          <span class="graph-meta dim">cpu temp · {windowLabel()}</span>
         </div>
       </div>
     {/if}
 
-    <!-- Network graph -->
     {#if system.net}
-      <div class="graph-card graph-card--wide">
+      <div class="graph-card glass graph-card--wide">
         <div class="graph-header">
           <span class="graph-label">Network</span>
           <div class="net-legend">
@@ -305,14 +275,14 @@
           {/if}
         </svg>
         <div class="graph-footer">
-          <span class="avg-label" style="color:#34c759">↑ avg {fmtBytes(txSpk.avgVal ?? 0)}</span>
-          <span class="graph-sub">{windowLabel()}</span>
-          <span class="avg-label" style="color:#007AFF">↓ avg {fmtBytes(rxSpk.avgVal ?? 0)}</span>
+          <span class="graph-meta" style="color:#34c759">↑ avg {fmtBytes(txSpk.avgVal ?? 0)}</span>
+          <span class="graph-meta dim">{windowLabel()}</span>
+          <span class="graph-meta" style="color:#007AFF">↓ avg {fmtBytes(rxSpk.avgVal ?? 0)}</span>
         </div>
       </div>
     {/if}
   </div>
-{/if}
+</div>
 
 <style>
   /* ── Toggle ── */
@@ -324,13 +294,9 @@
 
   .view-toggle {
     display: flex;
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px) saturate(1.8);
-    -webkit-backdrop-filter: blur(12px) saturate(1.8);
-    border: 1px solid var(--glass-border);
-    border-radius: 10px;
     padding: 3px;
     gap: 2px;
+    border-radius: 10px;
   }
 
   .view-toggle button {
@@ -348,40 +314,26 @@
   }
 
   .view-toggle button.active {
-    background: rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: var(--pill-hover);
     color: var(--text);
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.14), inset 0 0.5px 0 rgba(255,255,255,0.25);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 1px 4px var(--glass-shadow);
   }
 
-  /* ── Shared glass card mixin ── */
-  .gauge-card,
-  .graph-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(1.8);
-    -webkit-backdrop-filter: blur(20px) saturate(1.8);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    box-shadow:
-      0 4px 24px var(--glass-shadow),
-      0 1px 3px var(--glass-shadow),
-      inset 0 1px 0 var(--glass-shine);
-    /* Prevent backdrop-filter bleed artifacts */
-    transform: translateZ(0);
-    will-change: transform;
-    isolation: isolate;
-    transition: background 0.2s ease, box-shadow 0.2s ease;
+  /* ── Grid-stacked crossfade ── */
+  .views {
+    display: grid;
   }
 
-  .gauge-card:hover,
-  .graph-card:hover {
-    background: var(--glass-bg-hover);
-    box-shadow:
-      0 6px 32px var(--glass-shadow),
-      0 1px 4px var(--glass-shadow),
-      inset 0 1px 0 var(--glass-shine);
+  .views > * {
+    grid-area: 1 / 1;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+
+  .views > .active {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   /* ── Gauges ── */
@@ -399,7 +351,7 @@
     gap: 0.5rem;
   }
 
-  .ring { width: 120px; height: 120px; }
+  .ring { width: 120px; height: 120px; overflow: visible; }
 
   .bg {
     fill: none;
@@ -470,9 +422,7 @@
     gap: 0.875rem;
   }
 
-  .graph-card--wide {
-    grid-column: span 2;
-  }
+  .graph-card--wide { grid-column: span 2; }
 
   .graph-card {
     padding: 1rem 1.1rem 0.85rem;
@@ -517,7 +467,7 @@
     gap: 0.5rem;
   }
 
-  .avg-label {
+  .graph-meta {
     font-size: 0.68rem;
     font-weight: 600;
     color: var(--text);
@@ -525,11 +475,7 @@
     letter-spacing: -0.01em;
   }
 
-  .graph-sub {
-    font-size: 0.65rem;
-    color: var(--text);
-    opacity: 0.4;
-  }
+  .graph-meta.dim { opacity: 0.35; }
 
   .net-legend {
     display: flex;
