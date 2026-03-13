@@ -191,28 +191,23 @@
     align-items: center;
     gap: 8px;
     padding: 14px 8px 12px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(1.8);
-    -webkit-backdrop-filter: blur(20px) saturate(1.8);
-    border: 1px solid var(--glass-border);
+    background: var(--card-bg);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid var(--card-border);
     border-radius: 20px;
-    box-shadow:
-      0 4px 24px var(--glass-shadow),
-      0 1px 3px var(--glass-shadow),
-      inset 0 1px 0 var(--glass-shine);
+    box-shadow: var(--card-shadow);
     text-decoration: none;
     isolation: isolate;
+    transform: translateZ(0);
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     width: 100%;
   }
 
   .card:hover {
-    background: var(--glass-bg-hover);
+    background: var(--card-bg-hover);
     transform: translateY(-3px);
-    box-shadow:
-      0 8px 32px var(--glass-shadow),
-      0 2px 6px var(--glass-shadow),
-      inset 0 1px 0 var(--glass-shine);
+    box-shadow: var(--card-shadow-hover);
   }
 
   .icon-box {
@@ -272,7 +267,7 @@
     width: 100%;
   }
 
-  .add-card:hover { border-color: #007AFF; background: rgba(0,122,255,0.04); }
+  .add-card:hover { border-color: var(--accent); background: rgba(0,122,255,0.04); }
 
   .add-icon {
     width: 58px;
@@ -286,7 +281,7 @@
     transition: background 0.15s, color 0.15s;
   }
 
-  .add-card:hover .add-icon { background: rgba(0,122,255,0.1); color: #007AFF; }
+  .add-card:hover .add-icon { background: rgba(0,122,255,0.1); color: var(--accent); }
 
   /* Dialog */
   .overlay {
@@ -303,18 +298,15 @@
   }
 
   .dialog {
-    background: var(--glass-bg);
-    backdrop-filter: blur(28px) saturate(1.8);
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    border: 1px solid var(--glass-border);
+    background: var(--card-bg);
+    backdrop-filter: blur(32px) saturate(1.8);
+    -webkit-backdrop-filter: blur(32px) saturate(1.8);
+    border: 1px solid var(--card-border);
     border-radius: 24px;
     padding: 1.75rem;
     width: 100%;
     max-width: 380px;
-    box-shadow:
-      0 24px 60px var(--glass-shadow),
-      0 4px 16px var(--glass-shadow),
-      inset 0 1px 0 var(--glass-shine);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25), 0 4px 16px rgba(0, 0, 0, 0.15);
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -346,7 +338,7 @@
     transition: border-color 0.15s;
   }
 
-  .field-input:focus { border-color: #007AFF; background: var(--card-bg); }
+  .field-input:focus { border-color: var(--accent); background: var(--card-bg); }
   .field-input::placeholder { color: var(--text-3); }
 
   /* Icon picker */
@@ -424,7 +416,7 @@
     padding: 0.55rem 1.4rem;
     border-radius: 10px;
     border: none;
-    background: #007AFF;
+    background: var(--accent);
     color: white;
     font-size: 0.9rem;
     font-weight: 600;
@@ -433,7 +425,7 @@
     transition: background 0.15s;
   }
 
-  .btn-add:hover { background: #0071e3; }
+  .btn-add:hover { background: var(--accent-hover); }
 
   @media (max-width: 600px) {
     .grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; }

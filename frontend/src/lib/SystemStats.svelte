@@ -71,7 +71,7 @@
 
 <!-- Toggle -->
 <div class="top-bar">
-  <div class="view-toggle glass">
+  <div class="view-toggle card-surface">
     <button class:active={view === 'gauge'} onclick={() => view = 'gauge'}>Gauge</button>
     <button class:active={view === 'graph'} onclick={() => view = 'graph'}>Graph</button>
   </div>
@@ -81,7 +81,7 @@
 <div class="views">
   <!-- Gauge view -->
   <div class="gauges" class:active={view === 'gauge'}>
-    <div class="gauge-card glass">
+    <div class="gauge-card card-surface">
       <svg class="ring" viewBox="0 0 36 36">
         <path class="bg" d={PATH}/>
         <path class="fill" style="stroke:#007AFF" stroke-dasharray="{system.cpu.usage_percent},100" d={PATH} filter="url(#ring-glow)"/>
@@ -90,7 +90,7 @@
       <span class="label">CPU</span>
     </div>
 
-    <div class="gauge-card glass">
+    <div class="gauge-card card-surface">
       <svg class="ring" viewBox="0 0 36 36">
         <path class="bg" d={PATH}/>
         <path class="fill" style="stroke:#34c759" stroke-dasharray="{system.ram.usage_percent},100" d={PATH} filter="url(#ring-glow)"/>
@@ -100,7 +100,7 @@
       <span class="sub">{system.ram.used_mb} / {system.ram.total_mb} MB</span>
     </div>
 
-    <div class="gauge-card glass">
+    <div class="gauge-card card-surface">
       <svg class="ring" viewBox="0 0 36 36">
         <path class="bg" d={PATH}/>
         <path class="fill" style="stroke:#ff9500" stroke-dasharray="{system.disk.usage_percent},100" d={PATH} filter="url(#ring-glow)"/>
@@ -111,7 +111,7 @@
     </div>
 
     {#if system.temp?.cpu_temp_c}
-      <div class="gauge-card glass">
+      <div class="gauge-card card-surface">
         <svg class="ring" viewBox="0 0 36 36">
           <path class="bg" d={PATH}/>
           <path class="fill" style="stroke:{tempColor(system.temp.cpu_temp_c)}" stroke-dasharray="{system.temp.cpu_temp_c},100" d={PATH} filter="url(#ring-glow)"/>
@@ -123,7 +123,7 @@
     {/if}
 
     {#if system.net}
-      <div class="gauge-card glass net-card">
+      <div class="gauge-card card-surface net-card">
         <div class="net-rows">
           <div class="net-row">
             <svg viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="2.5" width="15" height="15">
@@ -146,7 +146,7 @@
 
   <!-- Graph view -->
   <div class="graphs" class:active={view === 'graph'}>
-    <div class="graph-card glass">
+    <div class="graph-card card-surface">
       <div class="graph-header">
         <span class="graph-label">CPU</span>
         <span class="graph-current" style="color:#007AFF">{system.cpu.usage_percent}%</span>
@@ -170,7 +170,7 @@
       </div>
     </div>
 
-    <div class="graph-card glass">
+    <div class="graph-card card-surface">
       <div class="graph-header">
         <span class="graph-label">RAM</span>
         <span class="graph-current" style="color:#34c759">{system.ram.usage_percent}%</span>
@@ -194,7 +194,7 @@
       </div>
     </div>
 
-    <div class="graph-card glass">
+    <div class="graph-card card-surface">
       <div class="graph-header">
         <span class="graph-label">Disk</span>
         <span class="graph-current" style="color:#ff9500">{system.disk.usage_percent}%</span>
@@ -220,7 +220,7 @@
 
     {#if system.temp?.cpu_temp_c}
       {@const color = tempColor(system.temp.cpu_temp_c)}
-      <div class="graph-card glass">
+      <div class="graph-card card-surface">
         <div class="graph-header">
           <span class="graph-label">Temp</span>
           <span class="graph-current" style="color:{color}">{system.temp.cpu_temp_c}°C</span>
@@ -246,7 +246,7 @@
     {/if}
 
     {#if system.net}
-      <div class="graph-card glass graph-card--wide">
+      <div class="graph-card card-surface graph-card--wide">
         <div class="graph-header">
           <span class="graph-label">Network</span>
           <div class="net-legend">
@@ -316,7 +316,7 @@
   .view-toggle button.active {
     background: var(--pill-hover);
     color: var(--text);
-    box-shadow: 0 1px 4px var(--glass-shadow);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   }
 
   /* ── Grid-stacked crossfade ── */
@@ -355,7 +355,7 @@
 
   .bg {
     fill: none;
-    stroke: rgba(120, 120, 128, 0.2);
+    stroke: var(--ring-track);
     stroke-width: 2.8;
   }
 

@@ -207,7 +207,7 @@
           </svg>
         </button>
         {#if showBgPanel}
-          <div class="bg-panel glass-panel">
+          <div class="bg-panel card-panel">
             <p class="bg-label">Background</p>
             <label class="bg-upload-btn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
@@ -448,7 +448,7 @@
     width: 100%;
   }
 
-  .bg-input:focus { border-color: #007AFF; background: var(--card-bg); }
+  .bg-input:focus { border-color: var(--accent); background: var(--card-bg); }
   .bg-input::placeholder { color: var(--text-3); }
 
   .bg-actions {
@@ -473,7 +473,7 @@
     padding: 0.4rem 0.9rem;
     border-radius: 8px;
     border: none;
-    background: #007AFF;
+    background: var(--accent);
     color: white;
     font-size: 0.82rem;
     font-weight: 600;
@@ -534,18 +534,16 @@
     color: var(--text);
     margin: 0 0 0.2rem;
     letter-spacing: -0.02em;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   }
 
   .section-sub {
     margin: 0;
     font-size: 0.78rem;
-    color: var(--text-3);
+    color: var(--text-2);
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 0.2rem;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
   .live-dot {
@@ -557,7 +555,7 @@
     flex-shrink: 0;
   }
 
-  .accent { color: #007AFF; font-weight: 500; }
+  .accent { color: var(--accent); font-weight: 500; }
 
   .uptime-badge {
     font-size: 0.68rem;
@@ -565,7 +563,7 @@
     padding: 0.25rem 0.75rem;
     border-radius: 999px;
     background: rgba(0,122,255,0.08);
-    color: #007AFF;
+    color: var(--accent);
     white-space: nowrap;
     align-self: flex-start;
     margin-top: 0.1rem;

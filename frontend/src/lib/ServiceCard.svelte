@@ -7,7 +7,7 @@
   href={container.url || undefined}
   target={container.url ? '_blank' : undefined}
   rel={container.url ? 'noopener noreferrer' : undefined}
-  class="card glass"
+  class="card card-surface"
   class:clickable={!!container.url}
 >
   <span class="name">{container.name}</span>

@@ -3,7 +3,7 @@
   const fmt = (n) => n.toLocaleString()
 </script>
 
-<div class="card glass">
+<div class="card card-surface">
   <div class="card-header">
     <div class="card-title">
       <svg viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" width="16" height="16">
@@ -98,6 +98,6 @@
     letter-spacing: -0.02em;
   }
 
-  .stat-value.accent { color: #007AFF; }
+  .stat-value.accent { color: var(--accent); }
   .stat-value.red { color: #ff3b30; }
 </style>
