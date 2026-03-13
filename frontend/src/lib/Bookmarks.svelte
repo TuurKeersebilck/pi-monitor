@@ -201,6 +201,7 @@
       0 1px 3px var(--glass-shadow),
       inset 0 1px 0 var(--glass-shine);
     text-decoration: none;
+    isolation: isolate;
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     width: 100%;
   }

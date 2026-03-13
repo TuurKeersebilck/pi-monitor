@@ -1,4 +1,6 @@
 <script>
+  import { fade } from 'svelte/transition'
+
   let { system, history = [] } = $props()
 
   let view = $state('gauge') // 'gauge' | 'graph'
@@ -70,7 +72,7 @@
 
 <!-- Gauge view -->
 {#if view === 'gauge'}
-  <div class="gauges view-enter">
+  <div class="gauges" transition:fade={{ duration: 180 }}>
     <!-- CPU -->
     <div class="gauge-card">
       <svg class="ring" viewBox="0 0 36 36">
@@ -168,7 +170,7 @@
 
 <!-- Graph view -->
 {#if view === 'graph'}
-  <div class="graphs view-enter">
+  <div class="graphs" transition:fade={{ duration: 180 }}>
     <!-- CPU graph -->
     <div class="graph-card">
       <div class="graph-header">
@@ -354,16 +356,6 @@
     border: 1px solid rgba(255, 255, 255, 0.18);
   }
 
-  /* ── View animation ── */
-  .view-enter {
-    animation: fadeUp 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px) scale(0.99); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
   /* ── Shared glass card mixin ── */
   .gauge-card,
   .graph-card {
@@ -376,6 +368,10 @@
       0 4px 24px var(--glass-shadow),
       0 1px 3px var(--glass-shadow),
       inset 0 1px 0 var(--glass-shine);
+    /* Prevent backdrop-filter bleed artifacts */
+    transform: translateZ(0);
+    will-change: transform;
+    isolation: isolate;
     transition: background 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -429,16 +425,18 @@
 
   .label {
     font-size: 0.78rem;
-    color: var(--text-2);
-    font-weight: 500;
+    color: var(--text);
+    font-weight: 600;
     text-align: center;
     letter-spacing: -0.01em;
+    opacity: 0.75;
   }
 
   .sub {
     font-size: 0.67rem;
-    color: var(--text-3);
+    color: var(--text);
     text-align: center;
+    opacity: 0.45;
   }
 
   .net-card { justify-content: center; gap: 0.875rem; }
@@ -491,8 +489,9 @@
 
   .graph-label {
     font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-2);
+    font-weight: 700;
+    color: var(--text);
+    opacity: 0.6;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -521,14 +520,15 @@
   .avg-label {
     font-size: 0.68rem;
     font-weight: 600;
-    color: var(--text-3);
+    color: var(--text);
+    opacity: 0.55;
     letter-spacing: -0.01em;
   }
 
   .graph-sub {
     font-size: 0.65rem;
-    color: var(--text-3);
-    opacity: 0.7;
+    color: var(--text);
+    opacity: 0.4;
   }
 
   .net-legend {

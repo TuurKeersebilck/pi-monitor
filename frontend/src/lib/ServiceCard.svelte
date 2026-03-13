@@ -41,6 +41,7 @@
       inset 0 1px 0 var(--glass-shine);
     text-decoration: none;
     color: inherit;
+    isolation: isolate;
     transition: box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
   }
 

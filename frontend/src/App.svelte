@@ -598,6 +598,7 @@
     color: var(--text);
     margin: 0 0 0.2rem;
     letter-spacing: -0.02em;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   }
 
   .section-sub {
@@ -608,6 +609,7 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 0.2rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 
   .live-dot {

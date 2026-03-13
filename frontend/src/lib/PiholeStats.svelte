@@ -48,6 +48,9 @@
       0 4px 24px var(--glass-shadow),
       0 1px 3px var(--glass-shadow),
       inset 0 1px 0 var(--glass-shine);
+    transform: translateZ(0);
+    will-change: transform;
+    isolation: isolate;
     transition: background 0.2s ease, box-shadow 0.2s ease;
   }
 
