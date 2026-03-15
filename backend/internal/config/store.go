@@ -14,8 +14,9 @@ type Service struct {
 }
 
 type Config struct {
-	Services   []Service `json:"services"`
-	Background string    `json:"background"`
+	Services       []Service `json:"services"`
+	Background     string    `json:"background"`
+	BackgroundBlur float64   `json:"background_blur"`
 }
 
 type Store struct {

@@ -1,9 +1,27 @@
 <script>
+  import { tweened } from 'svelte/motion'
+  import { cubicOut } from 'svelte/easing'
+  import { fade } from 'svelte/transition'
+
   let { system, history = [] } = $props()
 
   let view = $state('gauge')
 
   const PATH = "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+
+  // Tweened gauge values for smooth animation
+  const cpuTween = tweened(0, { duration: 600, easing: cubicOut })
+  const ramTween = tweened(0, { duration: 600, easing: cubicOut })
+  const diskTween = tweened(0, { duration: 600, easing: cubicOut })
+  const tempTween = tweened(0, { duration: 600, easing: cubicOut })
+
+  // Update tweened values when system changes
+  $effect(() => {
+    if (system?.cpu) cpuTween.set(system.cpu.usage_percent)
+    if (system?.ram) ramTween.set(system.ram.usage_percent)
+    if (system?.disk) diskTween.set(system.disk.usage_percent)
+    if (system?.temp) tempTween.set(system.temp.cpu_temp_c)
+  })
 
   function tempColor(t) {
     if (t >= 75) return '#ff3b30'
@@ -22,17 +40,40 @@
     return values.reduce((a, b) => a + b, 0) / values.length
   }
 
-  function sparkPoints(values, W, H, minV, maxV) {
-    if (values.length < 2) return { points: '', avgY: H / 2 }
+  // Catmull-Rom spline interpolation for smooth SVG curves
+  function catmullRomPath(values, W, H, minV, maxV) {
+    if (values.length < 2) return { path: '', fillPath: '', avgY: H / 2, avgVal: 0 }
     const range = maxV - minV || 1
-    const points = values.map((v, i) => {
-      const x = (i / (values.length - 1)) * W
-      const y = H - ((v - minV) / range) * (H - 4) - 2
-      return `${x.toFixed(1)},${y.toFixed(1)}`
-    }).join(' ')
+
+    const points = values.map((v, i) => ({
+      x: (i / (values.length - 1)) * W,
+      y: H - ((v - minV) / range) * (H - 4) - 2
+    }))
+
     const a = avg(values)
     const avgY = H - ((a - minV) / range) * (H - 4) - 2
-    return { points, avgY, avgVal: a }
+
+    // Build smooth cubic bezier path using Catmull-Rom conversion
+    let path = `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)]
+      const p1 = points[i]
+      const p2 = points[i + 1]
+      const p3 = points[Math.min(points.length - 1, i + 2)]
+
+      const cp1x = p1.x + (p2.x - p0.x) / 6
+      const cp1y = p1.y + (p2.y - p0.y) / 6
+      const cp2x = p2.x - (p3.x - p1.x) / 6
+      const cp2y = p2.y - (p3.y - p1.y) / 6
+
+      path += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`
+    }
+
+    // Fill path: same curve, closed at the bottom
+    const fillPath = `${path} L${W},${H} L0,${H} Z`
+
+    return { path, fillPath, avgY, avgVal: a }
   }
 
   let cpuSeries  = $derived(history.map(h => h.cpu?.usage_percent ?? 0))
@@ -44,13 +85,13 @@
 
   const W = 260, H = 72
 
-  let cpuSpk  = $derived(sparkPoints(cpuSeries, W, H, 0, 100))
-  let ramSpk  = $derived(sparkPoints(ramSeries, W, H, 0, 100))
-  let diskSpk = $derived(sparkPoints(diskSeries, W, H, 0, 100))
-  let tempSpk = $derived(sparkPoints(tempSeries, W, H, 20, 90))
+  let cpuSpk  = $derived(catmullRomPath(cpuSeries, W, H, 0, 100))
+  let ramSpk  = $derived(catmullRomPath(ramSeries, W, H, 0, 100))
+  let diskSpk = $derived(catmullRomPath(diskSeries, W, H, 0, 100))
+  let tempSpk = $derived(catmullRomPath(tempSeries, W, H, 20, 90))
   let netMax  = $derived(Math.max(...txSeries, ...rxSeries, 1))
-  let txSpk   = $derived(sparkPoints(txSeries, W, H, 0, netMax))
-  let rxSpk   = $derived(sparkPoints(rxSeries, W, H, 0, netMax))
+  let txSpk   = $derived(catmullRomPath(txSeries, W, H, 0, netMax))
+  let rxSpk   = $derived(catmullRomPath(rxSeries, W, H, 0, netMax))
 
   let windowLabel = $derived(() => {
     const s = history.length
@@ -77,15 +118,14 @@
   </div>
 </div>
 
-<!-- Views container: grid-stacked crossfade -->
-<div class="views">
-  <!-- Gauge view -->
-  <div class="gauges" class:active={view === 'gauge'}>
+<!-- Conditional rendering instead of grid-stacking to prevent stretching -->
+{#if view === 'gauge'}
+  <div class="gauges" in:fade={{ duration: 200 }}>
     <div class="gauge-card card-surface">
       <svg class="ring" viewBox="0 0 36 36">
         <path class="bg" d={PATH}/>
-        <path class="fill" style="stroke:#007AFF" stroke-dasharray="{system.cpu.usage_percent},100" d={PATH} filter="url(#ring-glow)"/>
-        <text x="18" y="16.5" class="val">{system.cpu.usage_percent}%</text>
+        <path class="fill" style="stroke:#007AFF" stroke-dasharray="{$cpuTween},100" d={PATH} filter="url(#ring-glow)"/>
+        <text x="18" y="16.5" class="val">{Math.round($cpuTween)}%</text>
       </svg>
       <span class="label">CPU</span>
     </div>
@@ -93,8 +133,8 @@
     <div class="gauge-card card-surface">
       <svg class="ring" viewBox="0 0 36 36">
         <path class="bg" d={PATH}/>
-        <path class="fill" style="stroke:#34c759" stroke-dasharray="{system.ram.usage_percent},100" d={PATH} filter="url(#ring-glow)"/>
-        <text x="18" y="16.5" class="val">{system.ram.usage_percent}%</text>
+        <path class="fill" style="stroke:#34c759" stroke-dasharray="{$ramTween},100" d={PATH} filter="url(#ring-glow)"/>
+        <text x="18" y="16.5" class="val">{Math.round($ramTween)}%</text>
       </svg>
       <span class="label">RAM</span>
       <span class="sub">{system.ram.used_mb} / {system.ram.total_mb} MB</span>
@@ -103,8 +143,8 @@
     <div class="gauge-card card-surface">
       <svg class="ring" viewBox="0 0 36 36">
         <path class="bg" d={PATH}/>
-        <path class="fill" style="stroke:#ff9500" stroke-dasharray="{system.disk.usage_percent},100" d={PATH} filter="url(#ring-glow)"/>
-        <text x="18" y="16.5" class="val">{system.disk.usage_percent}%</text>
+        <path class="fill" style="stroke:#ff9500" stroke-dasharray="{$diskTween},100" d={PATH} filter="url(#ring-glow)"/>
+        <text x="18" y="16.5" class="val">{Math.round($diskTween)}%</text>
       </svg>
       <span class="label">Disk</span>
       <span class="sub">{system.disk.used_gb} / {system.disk.total_gb} GB</span>
@@ -114,8 +154,8 @@
       <div class="gauge-card card-surface">
         <svg class="ring" viewBox="0 0 36 36">
           <path class="bg" d={PATH}/>
-          <path class="fill" style="stroke:{tempColor(system.temp.cpu_temp_c)}" stroke-dasharray="{system.temp.cpu_temp_c},100" d={PATH} filter="url(#ring-glow)"/>
-          <text x="18" y="16.5" class="val">{system.temp.cpu_temp_c}°</text>
+          <path class="fill" style="stroke:{tempColor($tempTween)}" stroke-dasharray="{$tempTween},100" d={PATH} filter="url(#ring-glow)"/>
+          <text x="18" y="16.5" class="val">{Math.round($tempTween)}°</text>
         </svg>
         <span class="label">Temp</span>
         <span class="sub">{system.temp.cpu_temp_c}°C</span>
@@ -143,9 +183,8 @@
       </div>
     {/if}
   </div>
-
-  <!-- Graph view -->
-  <div class="graphs" class:active={view === 'graph'}>
+{:else}
+  <div class="graphs" in:fade={{ duration: 200 }}>
     <div class="graph-card card-surface">
       <div class="graph-header">
         <span class="graph-label">CPU</span>
@@ -158,9 +197,9 @@
             <stop offset="100%" stop-color="#007AFF" stop-opacity="0"/>
           </linearGradient>
         </defs>
-        {#if cpuSpk.points}
-          <polygon points="{cpuSpk.points} {W},{H} 0,{H}" fill="url(#g-cpu)"/>
-          <polyline points={cpuSpk.points} fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+        {#if cpuSpk.path}
+          <path d={cpuSpk.fillPath} fill="url(#g-cpu)"/>
+          <path d={cpuSpk.path} fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/>
           <line x1="0" x2={W} y1={cpuSpk.avgY} y2={cpuSpk.avgY} stroke="#007AFF" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
         {/if}
       </svg>
@@ -182,9 +221,9 @@
             <stop offset="100%" stop-color="#34c759" stop-opacity="0"/>
           </linearGradient>
         </defs>
-        {#if ramSpk.points}
-          <polygon points="{ramSpk.points} {W},{H} 0,{H}" fill="url(#g-ram)"/>
-          <polyline points={ramSpk.points} fill="none" stroke="#34c759" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+        {#if ramSpk.path}
+          <path d={ramSpk.fillPath} fill="url(#g-ram)"/>
+          <path d={ramSpk.path} fill="none" stroke="#34c759" stroke-width="1.8" stroke-linecap="round"/>
           <line x1="0" x2={W} y1={ramSpk.avgY} y2={ramSpk.avgY} stroke="#34c759" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
         {/if}
       </svg>
@@ -206,9 +245,9 @@
             <stop offset="100%" stop-color="#ff9500" stop-opacity="0"/>
           </linearGradient>
         </defs>
-        {#if diskSpk.points}
-          <polygon points="{diskSpk.points} {W},{H} 0,{H}" fill="url(#g-disk)"/>
-          <polyline points={diskSpk.points} fill="none" stroke="#ff9500" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+        {#if diskSpk.path}
+          <path d={diskSpk.fillPath} fill="url(#g-disk)"/>
+          <path d={diskSpk.path} fill="none" stroke="#ff9500" stroke-width="1.8" stroke-linecap="round"/>
           <line x1="0" x2={W} y1={diskSpk.avgY} y2={diskSpk.avgY} stroke="#ff9500" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
         {/if}
       </svg>
@@ -232,9 +271,9 @@
               <stop offset="100%" stop-color="{color}" stop-opacity="0"/>
             </linearGradient>
           </defs>
-          {#if tempSpk.points}
-            <polygon points="{tempSpk.points} {W},{H} 0,{H}" fill="url(#g-temp)"/>
-            <polyline points={tempSpk.points} fill="none" stroke={color} stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+          {#if tempSpk.path}
+            <path d={tempSpk.fillPath} fill="url(#g-temp)"/>
+            <path d={tempSpk.path} fill="none" stroke={color} stroke-width="1.8" stroke-linecap="round"/>
             <line x1="0" x2={W} y1={tempSpk.avgY} y2={tempSpk.avgY} stroke={color} stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
           {/if}
         </svg>
@@ -265,13 +304,13 @@
               <stop offset="100%" stop-color="#007AFF" stop-opacity="0"/>
             </linearGradient>
           </defs>
-          {#if txSpk.points}
-            <polygon points="{txSpk.points} {W},{H} 0,{H}" fill="url(#g-tx)"/>
-            <polyline points={txSpk.points} fill="none" stroke="#34c759" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+          {#if txSpk.path}
+            <path d={txSpk.fillPath} fill="url(#g-tx)"/>
+            <path d={txSpk.path} fill="none" stroke="#34c759" stroke-width="1.8" stroke-linecap="round"/>
           {/if}
-          {#if rxSpk.points}
-            <polygon points="{rxSpk.points} {W},{H} 0,{H}" fill="url(#g-rx)"/>
-            <polyline points={rxSpk.points} fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+          {#if rxSpk.path}
+            <path d={rxSpk.fillPath} fill="url(#g-rx)"/>
+            <path d={rxSpk.path} fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/>
           {/if}
         </svg>
         <div class="graph-footer">
@@ -282,7 +321,7 @@
       </div>
     {/if}
   </div>
-</div>
+{/if}
 
 <style>
   /* ── Toggle ── */
@@ -317,23 +356,6 @@
     background: var(--pill-hover);
     color: var(--text);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  /* ── Grid-stacked crossfade ── */
-  .views {
-    display: grid;
-  }
-
-  .views > * {
-    grid-area: 1 / 1;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.22s ease;
-  }
-
-  .views > .active {
-    opacity: 1;
-    pointer-events: auto;
   }
 
   /* ── Gauges ── */

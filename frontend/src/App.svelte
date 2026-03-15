@@ -16,12 +16,18 @@
   let date = $state('')
   let showBgPanel = $state(false)
   let bgInput = $state('')
+  let bgBlur = $state(0)
   let bgUploading = $state(false)
   let darkMode = $state(false)
 
   // Config owned here — services + background persisted to backend
   let services = $state([])
   let ws
+
+  // Whether a wallpaper image is active (for readability helpers)
+  let hasWallpaper = $derived(
+    bgInput && (bgInput.startsWith('http') || bgInput.startsWith('/') || bgInput.startsWith('data:'))
+  )
 
   // Group Docker containers
   let grouped = $derived.by(() => {
@@ -40,18 +46,20 @@
       const cfg = await res.json()
       services = cfg.services ?? []
       bgInput = cfg.background ?? ''
+      bgBlur = cfg.background_blur ?? 0
       if (bgInput) applyBg(bgInput)
+      applyBlur(bgBlur)
     } catch (e) {
       console.error('Failed to load config:', e)
     }
   }
 
-  async function saveConfig(newServices, newBg) {
+  async function saveConfig(newServices, newBg, newBlur) {
     try {
       await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ services: newServices, background: newBg }),
+        body: JSON.stringify({ services: newServices, background: newBg, background_blur: newBlur ?? bgBlur }),
       })
     } catch (e) {
       console.error('Failed to save config:', e)
@@ -70,7 +78,7 @@
 
   function onServicesChange(updated) {
     services = updated
-    saveConfig(services, bgInput)
+    saveConfig(services, bgInput, bgBlur)
   }
 
   function connect() {
@@ -98,25 +106,26 @@
   }
 
   function applyBg(value) {
-    const body = document.body
+    const layer = document.getElementById('bg-layer')
+    if (!layer) return
     if (!value) {
-      body.style.backgroundImage = ''
-      body.style.backgroundColor = ''
-      body.style.backgroundSize = ''
-      body.style.backgroundPosition = ''
-      body.style.backgroundAttachment = ''
+      layer.style.backgroundImage = ''
+      layer.style.backgroundColor = ''
       return
     }
     if (value.startsWith('http') || value.startsWith('/') || value.startsWith('data:')) {
-      body.style.backgroundImage = `url(${value})`
-      body.style.backgroundSize = 'cover'
-      body.style.backgroundPosition = 'center'
-      body.style.backgroundAttachment = 'fixed'
-      body.style.backgroundColor = ''
+      layer.style.backgroundImage = `url(${value})`
+      layer.style.backgroundColor = ''
     } else {
-      body.style.backgroundImage = ''
-      body.style.backgroundColor = value
+      layer.style.backgroundImage = ''
+      layer.style.backgroundColor = value
     }
+  }
+
+  function applyBlur(value) {
+    const layer = document.getElementById('bg-layer')
+    if (!layer) return
+    layer.style.filter = value > 0 ? `blur(${value}px)` : ''
   }
 
   async function handleBgFile(e) {
@@ -130,7 +139,7 @@
       const { url } = await res.json()
       bgInput = url
       applyBg(url)
-      saveConfig(services, url)
+      saveConfig(services, url, bgBlur)
       showBgPanel = false
     } catch {
       console.error('Background upload failed')
@@ -142,15 +151,27 @@
 
   function saveBg() {
     applyBg(bgInput)
-    saveConfig(services, bgInput)
+    applyBlur(bgBlur)
+    saveConfig(services, bgInput, bgBlur)
     showBgPanel = false
   }
 
   function clearBg() {
     bgInput = ''
+    bgBlur = 0
     applyBg('')
-    saveConfig(services, '')
+    applyBlur(0)
+    saveConfig(services, '', 0)
     showBgPanel = false
+  }
+
+  function handleBlurChange(e) {
+    bgBlur = parseFloat(e.target.value)
+    applyBlur(bgBlur)
+  }
+
+  function handleBlurCommit() {
+    saveConfig(services, bgInput, bgBlur)
   }
 
   onMount(() => {
@@ -168,7 +189,10 @@
   })
 </script>
 
-<div class="app">
+<!-- Fixed background layer — blur filter applied here so content stays sharp -->
+<div id="bg-layer"></div>
+
+<div class="app" class:has-wallpaper={hasWallpaper}>
   <header>
     <div class="header-left">
       <span class="brand">Pi Dashboard</span>
@@ -225,6 +249,26 @@
               placeholder="https://… or #1a1a2e"
               onkeydown={(e) => { if (e.key === 'Enter') saveBg(); if (e.key === 'Escape') showBgPanel = false }}
             />
+
+            <!-- Blur slider -->
+            <div class="blur-control">
+              <label class="blur-label" for="blur-slider">
+                Blur
+                <span class="blur-value">{bgBlur.toFixed(0)}px</span>
+              </label>
+              <input
+                id="blur-slider"
+                type="range"
+                min="0"
+                max="30"
+                step="1"
+                value={bgBlur}
+                oninput={handleBlurChange}
+                onchange={handleBlurCommit}
+                class="blur-slider"
+              />
+            </div>
+
             <div class="bg-actions">
               <button class="bg-btn-clear" onclick={clearBg}>Clear</button>
               <button class="bg-btn-apply" onclick={saveBg}>Apply</button>
@@ -306,15 +350,45 @@
       </section>
     {/if}
   </main>
-
-  <footer>
-    <span>Raspberry Pi 5 · Debian Bookworm</span>
-    <span>Pi Dashboard</span>
-  </footer>
 </div>
 
 <style>
+  /* ── Background layer ── */
+  :global(#bg-layer) {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-color: var(--bg);
+    transition: filter 0.3s ease;
+    /* Slightly oversize to prevent blur edge artifacts */
+    margin: -8px;
+    padding: 8px;
+  }
+
   .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ── Readability when wallpaper is active ── */
+  .has-wallpaper .section-heading {
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .has-wallpaper .section-sub {
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .has-wallpaper .uptime-badge {
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    background: rgba(0, 122, 255, 0.15);
+  }
+
+  .has-wallpaper .group-name,
+  .has-wallpaper .group-count {
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
 
   /* ── Header ── */
   header {
@@ -451,6 +525,67 @@
   .bg-input:focus { border-color: var(--accent); background: var(--card-bg); }
   .bg-input::placeholder { color: var(--text-3); }
 
+  /* ── Blur slider ── */
+  .blur-control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .blur-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .blur-value {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .blur-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--ring-track);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .blur-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+
+  .blur-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+
+  .blur-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+  }
+
   .bg-actions {
     display: flex;
     gap: 0.5rem;
@@ -513,7 +648,7 @@
     max-width: 1300px;
     width: 100%;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 2rem 2rem 3rem;
     display: flex;
     flex-direction: column;
     gap: 2.5rem;
@@ -608,17 +743,6 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 0.75rem;
-  }
-
-  /* ── Footer ── */
-  footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 2rem;
-    font-size: 0.7rem;
-    color: var(--text-3);
-    border-top: 0.5px solid var(--border-subtle);
   }
 
   /* ── Responsive ── */

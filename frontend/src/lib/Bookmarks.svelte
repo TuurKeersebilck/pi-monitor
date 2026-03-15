@@ -198,8 +198,6 @@
     border-radius: 20px;
     box-shadow: var(--card-shadow);
     text-decoration: none;
-    isolation: isolate;
-    transform: translateZ(0);
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     width: 100%;
   }
