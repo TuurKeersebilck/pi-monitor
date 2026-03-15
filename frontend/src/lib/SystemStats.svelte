@@ -234,13 +234,23 @@
 
   let chartsReady = false
 
+  function destroyCharts() {
+    cpuChart?.destroy(); cpuChart = null
+    ramChart?.destroy(); ramChart = null
+    diskChart?.destroy(); diskChart = null
+    tempChart?.destroy(); tempChart = null
+    netChart?.destroy(); netChart = null
+    chartsReady = false
+  }
+
+  // Reinitialize charts every time the graph view mounts
   $effect(() => {
-    if (view === 'graph' && !chartsReady) {
-      // Wait a tick for canvas elements to mount
+    if (view === 'graph') {
+      // Canvases just mounted — wait a frame then init
       requestAnimationFrame(() => {
+        destroyCharts()
         initCharts()
         chartsReady = true
-        // Populate with existing history
         if (history.length > 0) {
           updateChart(cpuChart, history.map(h => h.cpu?.usage_percent ?? 0))
           updateChart(ramChart, history.map(h => h.ram?.usage_percent ?? 0))
@@ -251,6 +261,8 @@
           updateNetChart(netChart, tx, rx)
         }
       })
+    } else {
+      destroyCharts()
     }
   })
 

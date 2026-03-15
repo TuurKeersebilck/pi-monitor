@@ -371,23 +371,28 @@
   .app { min-height: 100vh; display: flex; flex-direction: column; }
 
   /* ── Readability when wallpaper is active ── */
+  .has-wallpaper .brand,
+  .has-wallpaper .clock-time,
   .has-wallpaper .section-heading {
-    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 0.2);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5), 0 0 2px rgba(0, 0, 0, 0.3);
   }
 
-  .has-wallpaper .section-sub {
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  .has-wallpaper .clock-date,
+  .has-wallpaper .section-sub,
+  .has-wallpaper .group-name,
+  .has-wallpaper .group-count {
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   }
 
   .has-wallpaper .uptime-badge {
     backdrop-filter: blur(12px) saturate(1.4);
     -webkit-backdrop-filter: blur(12px) saturate(1.4);
     background: rgba(0, 122, 255, 0.15);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 
-  .has-wallpaper .group-name,
-  .has-wallpaper .group-count {
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  .has-wallpaper .conn-badge {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 
   /* ── Header ── */
