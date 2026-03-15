@@ -2,6 +2,10 @@
   import { tweened } from 'svelte/motion'
   import { cubicOut } from 'svelte/easing'
   import { fade } from 'svelte/transition'
+  import { onMount, onDestroy } from 'svelte'
+  import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip, Legend } from 'chart.js'
+
+  Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip, Legend)
 
   let { system, history = [] } = $props()
 
@@ -15,7 +19,6 @@
   const diskTween = tweened(0, { duration: 600, easing: cubicOut })
   const tempTween = tweened(0, { duration: 600, easing: cubicOut })
 
-  // Update tweened values when system changes
   $effect(() => {
     if (system?.cpu) cpuTween.set(system.cpu.usage_percent)
     if (system?.ram) ramTween.set(system.ram.usage_percent)
@@ -35,68 +38,252 @@
     return bps.toFixed(0) + ' B/s'
   }
 
-  function avg(values) {
-    if (!values.length) return 0
-    return values.reduce((a, b) => a + b, 0) / values.length
+  // ── Chart.js setup ──
+  let cpuCanvas = $state()
+  let ramCanvas = $state()
+  let diskCanvas = $state()
+  let tempCanvas = $state()
+  let netCanvas = $state()
+  let cpuChart, ramChart, diskChart, tempChart, netChart
+
+  const MAX_POINTS = 120
+
+  function isDark() {
+    return document.documentElement.classList.contains('dark')
   }
 
-  // Catmull-Rom spline interpolation for smooth SVG curves
-  function catmullRomPath(values, W, H, minV, maxV) {
-    if (values.length < 2) return { path: '', fillPath: '', avgY: H / 2, avgVal: 0 }
-    const range = maxV - minV || 1
+  function chartTextColor() {
+    return isDark() ? 'rgba(240,240,245,0.55)' : 'rgba(28,28,30,0.55)'
+  }
 
-    const points = values.map((v, i) => ({
-      x: (i / (values.length - 1)) * W,
-      y: H - ((v - minV) / range) * (H - 4) - 2
-    }))
+  function chartGridColor() {
+    return isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+  }
 
-    const a = avg(values)
-    const avgY = H - ((a - minV) / range) * (H - 4) - 2
+  function createGradient(ctx, color, height) {
+    const gradient = ctx.createLinearGradient(0, 0, 0, height)
+    gradient.addColorStop(0, color.replace(')', ',0.3)').replace('rgb', 'rgba'))
+    gradient.addColorStop(1, color.replace(')', ',0)').replace('rgb', 'rgba'))
+    return gradient
+  }
 
-    // Build smooth cubic bezier path using Catmull-Rom conversion
-    let path = `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`
+  function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r},${g},${b},${alpha})`
+  }
 
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[Math.max(0, i - 1)]
-      const p1 = points[i]
-      const p2 = points[i + 1]
-      const p3 = points[Math.min(points.length - 1, i + 2)]
+  function makeGradient(ctx, hex, h) {
+    const grad = ctx.createLinearGradient(0, 0, 0, h)
+    grad.addColorStop(0, hexToRgba(hex, 0.3))
+    grad.addColorStop(1, hexToRgba(hex, 0))
+    return grad
+  }
 
-      const cp1x = p1.x + (p2.x - p0.x) / 6
-      const cp1y = p1.y + (p2.y - p0.y) / 6
-      const cp2x = p2.x - (p3.x - p1.x) / 6
-      const cp2y = p2.y - (p3.y - p1.y) / 6
-
-      path += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`
+  function baseOptions(min = 0, max = 100) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400, easing: 'easeOutCubic' },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isDark() ? 'rgba(30,30,34,0.92)' : 'rgba(255,255,255,0.92)',
+          titleColor: isDark() ? '#f0f0f5' : '#1c1c1e',
+          bodyColor: isDark() ? '#a0a0a8' : '#6c6c70',
+          borderColor: isDark() ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+          borderWidth: 1,
+          padding: 8,
+          cornerRadius: 8,
+          titleFont: { size: 11, weight: 600 },
+          bodyFont: { size: 11 },
+          displayColors: true,
+          boxWidth: 8,
+          boxHeight: 8,
+          boxPadding: 4,
+        },
+      },
+      scales: {
+        x: {
+          display: false,
+        },
+        y: {
+          min,
+          max,
+          display: true,
+          grid: { color: chartGridColor(), drawBorder: false },
+          border: { display: false },
+          ticks: {
+            color: chartTextColor(),
+            font: { size: 10, weight: 500 },
+            maxTicksLimit: 4,
+            padding: 4,
+          },
+        },
+      },
+      elements: {
+        point: { radius: 0, hoverRadius: 4, hoverBorderWidth: 2 },
+        line: { tension: 0.4, borderWidth: 2 },
+      },
     }
-
-    // Fill path: same curve, closed at the bottom
-    const fillPath = `${path} L${W},${H} L0,${H} Z`
-
-    return { path, fillPath, avgY, avgVal: a }
   }
 
-  let cpuSeries  = $derived(history.map(h => h.cpu?.usage_percent ?? 0))
-  let ramSeries  = $derived(history.map(h => h.ram?.usage_percent ?? 0))
-  let diskSeries = $derived(history.map(h => h.disk?.usage_percent ?? 0))
-  let tempSeries = $derived(history.map(h => h.temp?.cpu_temp_c ?? 0))
-  let txSeries   = $derived(history.map(h => h.net?.tx_bytes_s ?? 0))
-  let rxSeries   = $derived(history.map(h => h.net?.rx_bytes_s ?? 0))
+  function makeDataset(label, color, canvasEl) {
+    const ctx = canvasEl.getContext('2d')
+    const h = canvasEl.parentElement?.clientHeight || 72
+    return {
+      label,
+      data: [],
+      borderColor: color,
+      backgroundColor: makeGradient(ctx, color, h),
+      fill: true,
+      pointBackgroundColor: color,
+    }
+  }
 
-  const W = 260, H = 72
+  function createChart(canvas, label, color, opts = {}) {
+    if (!canvas) return null
+    const options = baseOptions(opts.min ?? 0, opts.max ?? 100)
+    if (opts.suffix) {
+      options.scales.y.ticks.callback = (v) => v + opts.suffix
+      options.plugins.tooltip.callbacks = {
+        label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}${opts.suffix}`
+      }
+    }
+    return new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [makeDataset(label, color, canvas)],
+      },
+      options,
+    })
+  }
 
-  let cpuSpk  = $derived(catmullRomPath(cpuSeries, W, H, 0, 100))
-  let ramSpk  = $derived(catmullRomPath(ramSeries, W, H, 0, 100))
-  let diskSpk = $derived(catmullRomPath(diskSeries, W, H, 0, 100))
-  let tempSpk = $derived(catmullRomPath(tempSeries, W, H, 20, 90))
-  let netMax  = $derived(Math.max(...txSeries, ...rxSeries, 1))
-  let txSpk   = $derived(catmullRomPath(txSeries, W, H, 0, netMax))
-  let rxSpk   = $derived(catmullRomPath(rxSeries, W, H, 0, netMax))
+  function createNetChart(canvas) {
+    if (!canvas) return null
+    const ctx = canvas.getContext('2d')
+    const h = canvas.parentElement?.clientHeight || 72
+    const options = baseOptions(0, 100)
+    options.scales.y.ticks.callback = (v) => {
+      if (v >= 1048576) return (v / 1048576).toFixed(1) + ' MB'
+      if (v >= 1024) return (v / 1024).toFixed(0) + ' KB'
+      return v + ' B'
+    }
+    options.plugins.tooltip.callbacks = {
+      label: (ctx) => `${ctx.dataset.label}: ${fmtBytes(ctx.parsed.y)}`
+    }
+    return new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: '↑ TX',
+            data: [],
+            borderColor: '#34c759',
+            backgroundColor: makeGradient(ctx, '#34c759', h),
+            fill: true,
+            pointBackgroundColor: '#34c759',
+          },
+          {
+            label: '↓ RX',
+            data: [],
+            borderColor: '#007AFF',
+            backgroundColor: makeGradient(ctx, '#007AFF', h),
+            fill: true,
+            pointBackgroundColor: '#007AFF',
+          },
+        ],
+      },
+      options,
+    })
+  }
+
+  function initCharts() {
+    cpuChart = createChart(cpuCanvas, 'CPU', '#007AFF', { suffix: '%' })
+    ramChart = createChart(ramCanvas, 'RAM', '#34c759', { suffix: '%' })
+    diskChart = createChart(diskCanvas, 'Disk', '#ff9500', { suffix: '%' })
+    tempChart = createChart(tempCanvas, 'Temp', '#34c759', { min: 20, max: 90, suffix: '°C' })
+    netChart = createNetChart(netCanvas)
+  }
+
+  function updateChart(chart, values, maxVal) {
+    if (!chart) return
+    const labels = values.map((_, i) => i)
+    chart.data.labels = labels
+    chart.data.datasets[0].data = values
+    if (maxVal !== undefined) {
+      chart.options.scales.y.max = maxVal
+    }
+    chart.update('none') // 'none' = skip animation for streaming data
+  }
+
+  function updateNetChart(chart, tx, rx) {
+    if (!chart) return
+    const labels = tx.map((_, i) => i)
+    const maxVal = Math.max(...tx, ...rx, 1024) * 1.2
+    chart.data.labels = labels
+    chart.data.datasets[0].data = tx
+    chart.data.datasets[1].data = rx
+    chart.options.scales.y.max = maxVal
+    chart.update('none')
+  }
+
+  let chartsReady = false
+
+  $effect(() => {
+    if (view === 'graph' && !chartsReady) {
+      // Wait a tick for canvas elements to mount
+      requestAnimationFrame(() => {
+        initCharts()
+        chartsReady = true
+        // Populate with existing history
+        if (history.length > 0) {
+          updateChart(cpuChart, history.map(h => h.cpu?.usage_percent ?? 0))
+          updateChart(ramChart, history.map(h => h.ram?.usage_percent ?? 0))
+          updateChart(diskChart, history.map(h => h.disk?.usage_percent ?? 0))
+          updateChart(tempChart, history.map(h => h.temp?.cpu_temp_c ?? 0))
+          const tx = history.map(h => h.net?.tx_bytes_s ?? 0)
+          const rx = history.map(h => h.net?.rx_bytes_s ?? 0)
+          updateNetChart(netChart, tx, rx)
+        }
+      })
+    }
+  })
+
+  // Update charts when history changes
+  $effect(() => {
+    if (!chartsReady || view !== 'graph') return
+    const h = history // track dependency
+    updateChart(cpuChart, h.map(d => d.cpu?.usage_percent ?? 0))
+    updateChart(ramChart, h.map(d => d.ram?.usage_percent ?? 0))
+    updateChart(diskChart, h.map(d => d.disk?.usage_percent ?? 0))
+    updateChart(tempChart, h.map(d => d.temp?.cpu_temp_c ?? 0))
+    const tx = h.map(d => d.net?.tx_bytes_s ?? 0)
+    const rx = h.map(d => d.net?.rx_bytes_s ?? 0)
+    updateNetChart(netChart, tx, rx)
+  })
 
   let windowLabel = $derived(() => {
     const s = history.length
     if (s < 60) return `${s}s`
     return `${Math.floor(s / 60)}m ${s % 60}s`
+  })
+
+  function avg(arr) {
+    if (!arr.length) return 0
+    return arr.reduce((a, b) => a + b, 0) / arr.length
+  }
+
+  onDestroy(() => {
+    cpuChart?.destroy()
+    ramChart?.destroy()
+    diskChart?.destroy()
+    tempChart?.destroy()
+    netChart?.destroy()
   })
 </script>
 
@@ -118,7 +305,7 @@
   </div>
 </div>
 
-<!-- Conditional rendering instead of grid-stacking to prevent stretching -->
+<!-- Conditional rendering to prevent stretching -->
 {#if view === 'gauge'}
   <div class="gauges" in:fade={{ duration: 200 }}>
     <div class="gauge-card card-surface">
@@ -190,21 +377,9 @@
         <span class="graph-label">CPU</span>
         <span class="graph-current" style="color:#007AFF">{system.cpu.usage_percent}%</span>
       </div>
-      <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="g-cpu" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#007AFF" stop-opacity="0.3"/>
-            <stop offset="100%" stop-color="#007AFF" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        {#if cpuSpk.path}
-          <path d={cpuSpk.fillPath} fill="url(#g-cpu)"/>
-          <path d={cpuSpk.path} fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="0" x2={W} y1={cpuSpk.avgY} y2={cpuSpk.avgY} stroke="#007AFF" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
-        {/if}
-      </svg>
+      <div class="chart-wrap"><canvas bind:this={cpuCanvas}></canvas></div>
       <div class="graph-footer">
-        <span class="graph-meta">avg {cpuSpk.avgVal?.toFixed(1) ?? '—'}%</span>
+        <span class="graph-meta">avg {avg(history.map(h => h.cpu?.usage_percent ?? 0)).toFixed(1)}%</span>
         <span class="graph-meta dim">last {windowLabel()}</span>
       </div>
     </div>
@@ -214,21 +389,9 @@
         <span class="graph-label">RAM</span>
         <span class="graph-current" style="color:#34c759">{system.ram.usage_percent}%</span>
       </div>
-      <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="g-ram" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#34c759" stop-opacity="0.3"/>
-            <stop offset="100%" stop-color="#34c759" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        {#if ramSpk.path}
-          <path d={ramSpk.fillPath} fill="url(#g-ram)"/>
-          <path d={ramSpk.path} fill="none" stroke="#34c759" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="0" x2={W} y1={ramSpk.avgY} y2={ramSpk.avgY} stroke="#34c759" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
-        {/if}
-      </svg>
+      <div class="chart-wrap"><canvas bind:this={ramCanvas}></canvas></div>
       <div class="graph-footer">
-        <span class="graph-meta">avg {ramSpk.avgVal?.toFixed(1) ?? '—'}%</span>
+        <span class="graph-meta">avg {avg(history.map(h => h.ram?.usage_percent ?? 0)).toFixed(1)}%</span>
         <span class="graph-meta dim">{system.ram.used_mb} / {system.ram.total_mb} MB · {windowLabel()}</span>
       </div>
     </div>
@@ -238,47 +401,22 @@
         <span class="graph-label">Disk</span>
         <span class="graph-current" style="color:#ff9500">{system.disk.usage_percent}%</span>
       </div>
-      <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="g-disk" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#ff9500" stop-opacity="0.3"/>
-            <stop offset="100%" stop-color="#ff9500" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        {#if diskSpk.path}
-          <path d={diskSpk.fillPath} fill="url(#g-disk)"/>
-          <path d={diskSpk.path} fill="none" stroke="#ff9500" stroke-width="1.8" stroke-linecap="round"/>
-          <line x1="0" x2={W} y1={diskSpk.avgY} y2={diskSpk.avgY} stroke="#ff9500" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
-        {/if}
-      </svg>
+      <div class="chart-wrap"><canvas bind:this={diskCanvas}></canvas></div>
       <div class="graph-footer">
-        <span class="graph-meta">avg {diskSpk.avgVal?.toFixed(1) ?? '—'}%</span>
+        <span class="graph-meta">avg {avg(history.map(h => h.disk?.usage_percent ?? 0)).toFixed(1)}%</span>
         <span class="graph-meta dim">{system.disk.used_gb} / {system.disk.total_gb} GB · {windowLabel()}</span>
       </div>
     </div>
 
     {#if system.temp?.cpu_temp_c}
-      {@const color = tempColor(system.temp.cpu_temp_c)}
       <div class="graph-card card-surface">
         <div class="graph-header">
           <span class="graph-label">Temp</span>
-          <span class="graph-current" style="color:{color}">{system.temp.cpu_temp_c}°C</span>
+          <span class="graph-current" style="color:{tempColor(system.temp.cpu_temp_c)}">{system.temp.cpu_temp_c}°C</span>
         </div>
-        <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="g-temp" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="{color}" stop-opacity="0.3"/>
-              <stop offset="100%" stop-color="{color}" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          {#if tempSpk.path}
-            <path d={tempSpk.fillPath} fill="url(#g-temp)"/>
-            <path d={tempSpk.path} fill="none" stroke={color} stroke-width="1.8" stroke-linecap="round"/>
-            <line x1="0" x2={W} y1={tempSpk.avgY} y2={tempSpk.avgY} stroke={color} stroke-width="0.8" stroke-dasharray="4,3" opacity="0.45"/>
-          {/if}
-        </svg>
+        <div class="chart-wrap"><canvas bind:this={tempCanvas}></canvas></div>
         <div class="graph-footer">
-          <span class="graph-meta">avg {tempSpk.avgVal?.toFixed(1) ?? '—'}°C</span>
+          <span class="graph-meta">avg {avg(history.map(h => h.temp?.cpu_temp_c ?? 0)).toFixed(1)}°C</span>
           <span class="graph-meta dim">cpu temp · {windowLabel()}</span>
         </div>
       </div>
@@ -293,30 +431,11 @@
             <span style="color:#007AFF">↓ {fmtBytes(system.net.rx_bytes_s)}</span>
           </div>
         </div>
-        <svg class="sparkline" viewBox="0 0 {W} {H}" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="g-tx" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#34c759" stop-opacity="0.22"/>
-              <stop offset="100%" stop-color="#34c759" stop-opacity="0"/>
-            </linearGradient>
-            <linearGradient id="g-rx" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#007AFF" stop-opacity="0.22"/>
-              <stop offset="100%" stop-color="#007AFF" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          {#if txSpk.path}
-            <path d={txSpk.fillPath} fill="url(#g-tx)"/>
-            <path d={txSpk.path} fill="none" stroke="#34c759" stroke-width="1.8" stroke-linecap="round"/>
-          {/if}
-          {#if rxSpk.path}
-            <path d={rxSpk.fillPath} fill="url(#g-rx)"/>
-            <path d={rxSpk.path} fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round"/>
-          {/if}
-        </svg>
+        <div class="chart-wrap"><canvas bind:this={netCanvas}></canvas></div>
         <div class="graph-footer">
-          <span class="graph-meta" style="color:#34c759">↑ avg {fmtBytes(txSpk.avgVal ?? 0)}</span>
+          <span class="graph-meta" style="color:#34c759">↑ avg {fmtBytes(avg(history.map(h => h.net?.tx_bytes_s ?? 0)))}</span>
           <span class="graph-meta dim">{windowLabel()}</span>
-          <span class="graph-meta" style="color:#007AFF">↓ avg {fmtBytes(rxSpk.avgVal ?? 0)}</span>
+          <span class="graph-meta" style="color:#007AFF">↓ avg {fmtBytes(avg(history.map(h => h.net?.rx_bytes_s ?? 0)))}</span>
         </div>
       </div>
     {/if}
@@ -437,7 +556,7 @@
     white-space: nowrap;
   }
 
-  /* ── Graphs ── */
+  /* ── Graphs (Chart.js) ── */
   .graphs {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -451,6 +570,17 @@
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
+  }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 80px;
+  }
+
+  .chart-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
   }
 
   .graph-header {
@@ -472,14 +602,6 @@
     font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: -0.03em;
-  }
-
-  .sparkline {
-    width: 100%;
-    height: 72px;
-    display: block;
-    border-radius: 8px;
-    overflow: visible;
   }
 
   .graph-footer {
