@@ -3,7 +3,7 @@ module github.com/tuurk/dashboard
 go 1.25.0
 
 require (
-	github.com/docker/docker v28.0.0+incompatible
+	github.com/docker/docker v28.5.2+incompatible
 	github.com/gorilla/websocket v1.5.3
 )
 
