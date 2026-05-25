@@ -3,6 +3,7 @@
   let { services, onchange } = $props()
 
   let showDialog = $state(false)
+  let editIndex = $state(null)
   let form = $state({ name: '', url: '', icon: '' })
   let error = $state('')
   let uploading = $state(false)
@@ -10,14 +11,29 @@
   function openDialog() {
     form = { name: '', url: '', icon: '' }
     error = ''
+    editIndex = null
     showDialog = true
   }
 
-  function addService() {
+  function openEditDialog(i) {
+    const s = services[i]
+    form = { name: s.name, url: s.url, icon: s.icon }
+    error = ''
+    editIndex = i
+    showDialog = true
+  }
+
+  function saveService() {
     const name = form.name.trim()
     const url = form.url.trim()
     if (!name || !url) { error = 'Name and URL are required.'; return }
-    onchange([...services, { name, url, icon: form.icon.trim() }])
+    if (editIndex !== null) {
+      const updated = [...services]
+      updated[editIndex] = { name, url, icon: form.icon.trim() }
+      onchange(updated)
+    } else {
+      onchange([...services, { name, url, icon: form.icon.trim() }])
+    }
     form = { name: '', url: '', icon: '' }
     error = ''
     showDialog = false
@@ -57,7 +73,7 @@
 
   function handleKey(e) {
     if (e.key === 'Escape') showDialog = false
-    if (e.key === 'Enter' && showDialog) addService()
+    if (e.key === 'Enter' && showDialog) saveService()
   }
 </script>
 
@@ -69,6 +85,12 @@
       <button class="remove-btn" onclick={() => remove(i)} title="Remove {service.name}" aria-label="Remove {service.name}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <button class="edit-btn" onclick={() => openEditDialog(i)} title="Edit {service.name}" aria-label="Edit {service.name}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
         </svg>
       </button>
       <a class="card" href={service.url} target="_blank" rel="noopener noreferrer">
@@ -100,8 +122,8 @@
 
 {#if showDialog}
   <div class="overlay" role="presentation" onclick={() => showDialog = false} onkeydown={(e) => { if (e.key === 'Escape') showDialog = false }}>
-    <div class="dialog" role="dialog" aria-modal="true" aria-label="Add service" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
-      <h3 class="dialog-title">Add Service</h3>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label={editIndex !== null ? 'Edit service' : 'Add service'} tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+      <h3 class="dialog-title">{editIndex !== null ? 'Edit Service' : 'Add Service'}</h3>
 
       <div class="field">
         <label class="field-label" for="svc-name">Name</label>
@@ -147,7 +169,7 @@
 
       <div class="actions">
         <button class="btn-cancel" onclick={() => showDialog = false}>Cancel</button>
-        <button class="btn-add" onclick={addService}>Add</button>
+        <button class="btn-add" onclick={saveService}>{editIndex !== null ? 'Save' : 'Add'}</button>
       </div>
     </div>
   </div>
@@ -184,6 +206,29 @@
   }
 
   .wrap:hover .remove-btn { opacity: 1; }
+
+  .edit-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 10;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #007AFF;
+    border: 2px solid white;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+
+  .wrap:hover .edit-btn { opacity: 1; }
 
   .card {
     display: flex;
