@@ -6,8 +6,10 @@
   let { containers = [], containerHistory = {} } = $props()
 
   let expanded = $state(null)
-  let sparkCanvas = $state(null)
-  let sparkChart = null
+  let sparkCpuCanvas = $state(null)
+  let sparkRamCanvas = $state(null)
+  let sparkCpuChart = null
+  let sparkRamChart = null
 
   function toggle(name) {
     expanded = expanded === name ? null : name
@@ -38,9 +40,15 @@
   function barColor(pct) {
     if (pct >= 90) return 'var(--red)'
     if (pct >= 75) return 'var(--orange)'
-    return null // use default css colour
+    return null
   }
 
+  function avg(arr, key) {
+    if (!arr?.length) return 0
+    return arr.reduce((s, d) => s + (d[key] ?? 0), 0) / arr.length
+  }
+
+  // Sort: running first, then by combined CPU+RAM usage descending
   let grouped = $derived.by(() => {
     const map = {}
     for (const c of containers) {
@@ -48,32 +56,34 @@
       if (!map[g]) map[g] = []
       map[g].push(c)
     }
+    for (const g of Object.keys(map)) {
+      map[g].sort((a, b) => {
+        if (a.running !== b.running) return a.running ? -1 : 1
+        return ((b.cpu_percent || 0) + (b.mem_percent || 0)) -
+               ((a.cpu_percent || 0) + (a.mem_percent || 0))
+      })
+    }
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
   })
 
-  // Init sparkline chart when a row is expanded
-  $effect(() => {
-    if (!sparkCanvas || !expanded) return
+  function isDark() {
+    return document.documentElement.classList.contains('dark')
+  }
 
-    sparkChart?.destroy()
-    sparkChart = null
-
-    const history = containerHistory[expanded] ?? []
-    const cpuData = history.map(d => d.cpu_percent ?? 0)
-    const isDark = document.documentElement.classList.contains('dark')
-    const ctx = sparkCanvas.getContext('2d')
-    const grad = ctx.createLinearGradient(0, 0, 0, 72)
-    grad.addColorStop(0, 'rgba(0,122,255,0.22)')
-    grad.addColorStop(1, 'rgba(0,122,255,0)')
-
-    sparkChart = new Chart(sparkCanvas, {
+  function makeSparkChart(canvas, label, borderColor, gradStart, gradEnd, data) {
+    const dark = isDark()
+    const ctx = canvas.getContext('2d')
+    const grad = ctx.createLinearGradient(0, 0, 0, 64)
+    grad.addColorStop(0, gradStart)
+    grad.addColorStop(1, gradEnd)
+    return new Chart(canvas, {
       type: 'line',
       data: {
-        labels: cpuData.map((_, i) => i),
+        labels: data.map((_, i) => i),
         datasets: [{
-          label: 'CPU %',
-          data: cpuData,
-          borderColor: '#007AFF',
+          label,
+          data,
+          borderColor,
           backgroundColor: grad,
           fill: true,
           tension: 0.4,
@@ -89,11 +99,11 @@
         plugins: {
           legend: { display: false },
           tooltip: {
-            callbacks: { label: c => `CPU: ${c.parsed.y.toFixed(1)}%` },
-            backgroundColor: isDark ? 'rgba(30,30,34,0.92)' : 'rgba(255,255,255,0.92)',
-            titleColor: isDark ? '#f0f0f5' : '#1c1c1e',
-            bodyColor: isDark ? '#a0a0a8' : '#6c6c70',
-            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+            callbacks: { label: c => `${label}: ${c.parsed.y.toFixed(1)}%` },
+            backgroundColor: dark ? 'rgba(30,30,34,0.92)' : 'rgba(255,255,255,0.92)',
+            titleColor: dark ? '#f0f0f5' : '#1c1c1e',
+            bodyColor: dark ? '#a0a0a8' : '#6c6c70',
+            borderColor: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
             borderWidth: 1,
             padding: 6,
             cornerRadius: 6,
@@ -105,35 +115,61 @@
             min: 0,
             max: 100,
             border: { display: false },
-            grid: { color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' },
+            grid: { color: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' },
             ticks: {
               callback: v => v + '%',
               maxTicksLimit: 3,
               font: { size: 10 },
-              color: isDark ? 'rgba(240,240,245,0.4)' : 'rgba(28,28,30,0.4)',
+              color: dark ? 'rgba(240,240,245,0.4)' : 'rgba(28,28,30,0.4)',
               padding: 4,
             }
           }
         }
       }
     })
+  }
 
-    return () => {
-      sparkChart?.destroy()
-      sparkChart = null
-    }
-  })
+  function destroyCharts() {
+    sparkCpuChart?.destroy(); sparkCpuChart = null
+    sparkRamChart?.destroy(); sparkRamChart = null
+  }
 
-  // Live-update sparkline when history changes
+  // Create/recreate both charts when expanded row changes
   $effect(() => {
-    if (!sparkChart || !expanded) return
-    const cpuData = (containerHistory[expanded] ?? []).map(d => d.cpu_percent ?? 0)
-    sparkChart.data.labels = cpuData.map((_, i) => i)
-    sparkChart.data.datasets[0].data = cpuData
-    sparkChart.update('none')
+    if (!expanded) { destroyCharts(); return }
+    requestAnimationFrame(() => {
+      if (!sparkCpuCanvas || !sparkRamCanvas) return
+      destroyCharts()
+      const hist = containerHistory[expanded] ?? []
+      sparkCpuChart = makeSparkChart(
+        sparkCpuCanvas, 'CPU %', '#007AFF',
+        'rgba(0,122,255,0.22)', 'rgba(0,122,255,0)',
+        hist.map(d => d.cpu_percent ?? 0)
+      )
+      sparkRamChart = makeSparkChart(
+        sparkRamCanvas, 'RAM %', '#34c759',
+        'rgba(52,199,89,0.22)', 'rgba(52,199,89,0)',
+        hist.map(d => d.mem_percent ?? 0)
+      )
+    })
   })
 
-  onDestroy(() => sparkChart?.destroy())
+  // Live-update both charts when history changes
+  $effect(() => {
+    if (!sparkCpuChart || !sparkRamChart || !expanded) return
+    const hist = containerHistory[expanded] ?? []
+    const cpuData = hist.map(d => d.cpu_percent ?? 0)
+    const ramData = hist.map(d => d.mem_percent ?? 0)
+    const labels = cpuData.map((_, i) => i)
+    sparkCpuChart.data.labels = labels
+    sparkCpuChart.data.datasets[0].data = cpuData
+    sparkCpuChart.update('none')
+    sparkRamChart.data.labels = labels
+    sparkRamChart.data.datasets[0].data = ramData
+    sparkRamChart.update('none')
+  })
+
+  onDestroy(destroyCharts)
 </script>
 
 <div class="docker-list">
@@ -164,6 +200,7 @@
 
           {#if c.running}
             <div class="bars">
+              <!-- CPU -->
               <div class="bar-item">
                 <span class="bar-label">CPU</span>
                 <div class="bar-track">
@@ -174,6 +211,7 @@
                 </div>
                 <span class="bar-val">{(c.cpu_percent || 0).toFixed(1)}%</span>
               </div>
+              <!-- RAM — shows % + amount used -->
               <div class="bar-item">
                 <span class="bar-label">RAM</span>
                 <div class="bar-track">
@@ -182,7 +220,10 @@
                     style="width:{clamp(c.mem_percent)}%;background:{barColor(c.mem_percent) ?? '#34c759'}"
                   ></div>
                 </div>
-                <span class="bar-val">{(c.mem_percent || 0).toFixed(1)}%</span>
+                <div class="bar-stat">
+                  <span class="bar-val">{(c.mem_percent || 0).toFixed(1)}%</span>
+                  <span class="bar-sub">{fmtMem(c.mem_used_mb)}</span>
+                </div>
               </div>
             </div>
 
@@ -201,15 +242,36 @@
           {/if}
         </div>
 
-        <!-- Expanded sparkline -->
+        <!-- Expanded: avg stats + CPU and RAM sparklines side by side -->
         {#if expanded === c.name}
+          {@const hist = containerHistory[c.name] ?? []}
           <div class="expanded-section">
-            <div class="expand-meta">
-              <span class="expand-label">CPU history · {(containerHistory[c.name]?.length ?? 0)}pts</span>
-              <span class="expand-mem">{fmtMem(c.mem_used_mb)} / {fmtMem(c.mem_limit_mb)} RAM</span>
+            <div class="expand-avgs">
+              <div class="avg-item">
+                <span class="avg-label">avg CPU</span>
+                <span class="avg-val" style="color:#007AFF">{avg(hist, 'cpu_percent').toFixed(1)}%</span>
+              </div>
+              <div class="avg-divider"></div>
+              <div class="avg-item">
+                <span class="avg-label">avg RAM</span>
+                <span class="avg-val" style="color:#34c759">{avg(hist, 'mem_percent').toFixed(1)}%</span>
+                <span class="avg-sub">{fmtMem(avg(hist, 'mem_used_mb'))}</span>
+              </div>
+              <span class="expand-pts">{hist.length} pts</span>
             </div>
-            <div class="spark-wrap">
-              <canvas bind:this={sparkCanvas}></canvas>
+            <div class="spark-row">
+              <div class="spark-item">
+                <span class="spark-label" style="color:#007AFF">CPU %</span>
+                <div class="spark-wrap">
+                  <canvas bind:this={sparkCpuCanvas}></canvas>
+                </div>
+              </div>
+              <div class="spark-item">
+                <span class="spark-label" style="color:#34c759">RAM %</span>
+                <div class="spark-wrap">
+                  <canvas bind:this={sparkRamCanvas}></canvas>
+                </div>
+              </div>
             </div>
           </div>
         {/if}
@@ -256,16 +318,12 @@
     border-radius: 12px;
     padding: 0.65rem 1rem;
     cursor: default;
-    transition: background 0.15s ease;
   }
 
   .container-row[role="button"] { cursor: pointer; }
+  .container-row.stopped { opacity: 0.55; }
 
-  .container-row.stopped {
-    opacity: 0.55;
-  }
-
-  /* Main row layout */
+  /* Main row */
   .row-main {
     display: flex;
     align-items: center;
@@ -348,10 +406,24 @@
     font-size: 0.72rem;
     font-weight: 600;
     color: var(--text-2);
-    width: 36px;
-    text-align: right;
-    flex-shrink: 0;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* RAM stat: % stacked above amount */
+  .bar-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    min-width: 48px;
+  }
+
+  .bar-sub {
+    font-size: 0.62rem;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
   }
 
   /* Network */
@@ -396,21 +468,30 @@
 
   .chevron.open { transform: rotate(90deg); }
 
-  /* Expanded sparkline */
+  /* Expanded section */
   .expanded-section {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
     border-top: 1px solid var(--border-subtle);
-  }
-
-  .expand-meta {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 0.5rem;
+    flex-direction: column;
+    gap: 0.65rem;
   }
 
-  .expand-label {
+  /* Avg stats row */
+  .expand-avgs {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .avg-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+  }
+
+  .avg-label {
     font-size: 0.68rem;
     font-weight: 700;
     color: var(--text-3);
@@ -418,14 +499,54 @@
     letter-spacing: 0.04em;
   }
 
-  .expand-mem {
-    font-size: 0.7rem;
+  .avg-val {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .avg-sub {
+    font-size: 0.68rem;
     color: var(--text-3);
     font-variant-numeric: tabular-nums;
   }
 
+  .avg-divider {
+    width: 1px;
+    height: 14px;
+    background: var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  .expand-pts {
+    font-size: 0.65rem;
+    color: var(--text-3);
+    margin-left: auto;
+  }
+
+  /* Two sparklines side by side */
+  .spark-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .spark-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .spark-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
   .spark-wrap {
-    height: 72px;
+    height: 64px;
     position: relative;
   }
 
@@ -444,5 +565,6 @@
   @media (max-width: 480px) {
     .bars { gap: 0.4rem; }
     .bar-item { min-width: 70px; }
+    .spark-row { grid-template-columns: 1fr; }
   }
 </style>

@@ -573,6 +573,9 @@
     flex-direction: column;
     gap: 0.85rem;
     z-index: 50;
+    /* Override card-panel's near-transparent background so text is always readable */
+    background: var(--bg-elevated);
+    border-color: var(--border);
   }
 
   .settings-section-label {
