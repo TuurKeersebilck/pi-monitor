@@ -48,7 +48,7 @@
     return arr.reduce((s, d) => s + (d[key] ?? 0), 0) / arr.length
   }
 
-  // Sort: running first, then by combined CPU+RAM usage descending
+  // Sort: running first, then preserve arrival order
   let grouped = $derived.by(() => {
     const map = {}
     for (const c of containers) {
@@ -59,8 +59,7 @@
     for (const g of Object.keys(map)) {
       map[g].sort((a, b) => {
         if (a.running !== b.running) return a.running ? -1 : 1
-        return ((b.cpu_percent || 0) + (b.mem_percent || 0)) -
-               ((a.cpu_percent || 0) + (a.mem_percent || 0))
+        return 0
       })
     }
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
