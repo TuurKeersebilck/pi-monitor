@@ -59,6 +59,10 @@ func Open(path string) (*DB, error) {
 	if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
 		return nil, fmt.Errorf("synchronous: %w", err)
 	}
+	// Limit page cache to 2 MB (negative value = KiB).
+	if _, err := db.Exec("PRAGMA cache_size=-2000"); err != nil {
+		return nil, fmt.Errorf("cache_size: %w", err)
+	}
 	if err := migrate(db); err != nil {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}

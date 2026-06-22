@@ -28,6 +28,7 @@ func main() {
 	staticDir := getenv("STATIC_DIR", "/app/frontend/dist")
 	listenAddr := getenv("LISTEN_ADDR", ":8080")
 	dataDir := getenv("DATA_DIR", "/app/data")
+	historyEnabled := getenv("HISTORY_ENABLED", "true") != "false"
 
 	cfgStore, err := config.NewStore(dataDir)
 	if err != nil {
@@ -39,16 +40,20 @@ func main() {
 		log.Fatalf("failed to create uploads dir: %v", err)
 	}
 
-	// Stats persistence — non-fatal if SQLite fails (e.g. read-only volume)
+	// Stats persistence — skipped if HISTORY_ENABLED=false (saves ~30 MB from modernc.org/libc arenas)
 	var statsStore *store.DB
-	statsStore, err = store.Open(filepath.Join(dataDir, "stats.db"))
-	if err != nil {
-		log.Printf("warning: stats store unavailable: %v — persistence disabled", err)
+	if historyEnabled {
+		statsStore, err = store.Open(filepath.Join(dataDir, "stats.db"))
+		if err != nil {
+			log.Printf("warning: stats store unavailable: %v — persistence disabled", err)
+		} else {
+			log.Println("stats store opened")
+			cfg, _ := cfgStore.Load()
+			statsStore.Prune(retentionDays(cfg))
+			startWriter(statsStore, cfgStore)
+		}
 	} else {
-		log.Println("stats store opened")
-		cfg, _ := cfgStore.Load()
-		statsStore.Prune(retentionDays(cfg))
-		startWriter(statsStore, cfgStore)
+		log.Println("history disabled (HISTORY_ENABLED=false)")
 	}
 
 	dockerClient, err := docker.NewClient()
@@ -69,7 +74,7 @@ func main() {
 
 	hub := ws.NewHub(dockerClient, piholeClient, immichClient)
 
-	handler := api.NewHandler(hub, cfgStore, statsStore, uploadsDir)
+	handler := api.NewHandler(hub, cfgStore, statsStore, uploadsDir, historyEnabled)
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux, staticDir)
 

@@ -5,6 +5,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - GOGC=50
+      - GOMEMLIMIT=100MiB
     group_add:
       - "991"
     volumes:

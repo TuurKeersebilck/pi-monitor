@@ -20,6 +20,7 @@
   let bgBlur = $state(0)
   let bgUploading = $state(false)
   let darkMode = $state(false)
+  let historyEnabled = $state(true)
   let retentionDays = $state(7)
   let historyRange = $state('24h')
   let historyLoading = $state(false)
@@ -41,6 +42,7 @@
       bgInput = cfg.background ?? ''
       bgBlur = cfg.background_blur ?? 0
       retentionDays = cfg.retention_days ?? 7
+      historyEnabled = cfg.history_enabled ?? true
       if (bgInput) applyBg(bgInput)
       applyBlur(bgBlur)
     } catch (e) {
@@ -121,8 +123,7 @@
       const data = JSON.parse(e.data)
       if (data.system) {
         system = data.system
-        // Append live point; keep cap generous so loaded history stays visible
-        history = [...history.slice(-9999), data.system]
+        if (historyEnabled) history = [...history.slice(-9999), data.system]
       }
       if (data.containers) {
         const now = Math.floor(Date.now() / 1000)
@@ -270,7 +271,7 @@
     connect()
     tickClock()
     clockId = setInterval(tickClock, 1000)
-    loadConfig().then(() => loadHistory('24h'))
+    loadConfig().then(() => { if (historyEnabled) loadHistory('24h') })
   })
 
   onDestroy(() => {
@@ -358,24 +359,26 @@
               />
             </div>
 
-            <div class="settings-divider"></div>
+            {#if historyEnabled}
+              <div class="settings-divider"></div>
 
-            <!-- Data -->
-            <p class="settings-section-label">Data</p>
+              <!-- Data -->
+              <p class="settings-section-label">Data</p>
 
-            <div class="slider-row">
-              <label class="slider-label" for="retention-slider">
-                History retention <span class="slider-val">{retentionDays} days</span>
-              </label>
-              <input
-                id="retention-slider"
-                type="range" min="1" max="90" step="1"
-                value={retentionDays}
-                oninput={handleRetentionChange}
-                onchange={handleRetentionCommit}
-                class="dash-slider"
-              />
-            </div>
+              <div class="slider-row">
+                <label class="slider-label" for="retention-slider">
+                  History retention <span class="slider-val">{retentionDays} days</span>
+                </label>
+                <input
+                  id="retention-slider"
+                  type="range" min="1" max="90" step="1"
+                  value={retentionDays}
+                  oninput={handleRetentionChange}
+                  onchange={handleRetentionCommit}
+                  class="dash-slider"
+                />
+              </div>
+            {/if}
 
           </div>
         {/if}
@@ -406,11 +409,13 @@
             {#if system.info?.uptime}
               <span class="uptime-badge">↑ {system.info.uptime}</span>
             {/if}
-            <div class="range-picker card-surface" class:loading={historyLoading}>
-              {#each ['1h', '6h', '24h', '7d'] as r}
-                <button class:active={historyRange === r} onclick={() => setRange(r)}>{r}</button>
-              {/each}
-            </div>
+            {#if historyEnabled}
+              <div class="range-picker card-surface" class:loading={historyLoading}>
+                {#each ['1h', '6h', '24h', '7d'] as r}
+                  <button class:active={historyRange === r} onclick={() => setRange(r)}>{r}</button>
+                {/each}
+              </div>
+            {/if}
           </div>
         </div>
         <SystemStats {system} {history} />

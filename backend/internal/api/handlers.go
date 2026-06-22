@@ -25,14 +25,15 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
-	hub        *ws.Hub
-	cfgStore   *config.Store
-	statsStore *store.DB
-	uploadsDir string
+	hub            *ws.Hub
+	cfgStore       *config.Store
+	statsStore     *store.DB
+	uploadsDir     string
+	historyEnabled bool
 }
 
-func NewHandler(hub *ws.Hub, cfgStore *config.Store, statsStore *store.DB, uploadsDir string) *Handler {
-	return &Handler{hub: hub, cfgStore: cfgStore, statsStore: statsStore, uploadsDir: uploadsDir}
+func NewHandler(hub *ws.Hub, cfgStore *config.Store, statsStore *store.DB, uploadsDir string, historyEnabled bool) *Handler {
+	return &Handler{hub: hub, cfgStore: cfgStore, statsStore: statsStore, uploadsDir: uploadsDir, historyEnabled: historyEnabled}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, staticDir string) {
@@ -82,7 +83,10 @@ func (h *Handler) handleConfig(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(cfg)
+		json.NewEncoder(w).Encode(struct {
+			*config.Config
+			HistoryEnabled bool `json:"history_enabled"`
+		}{cfg, h.historyEnabled})
 
 	case http.MethodPost:
 		var cfg config.Config

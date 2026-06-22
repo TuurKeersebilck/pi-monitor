@@ -125,7 +125,15 @@ func (c *Client) ListContainers(ctx context.Context) ([]ContainerInfo, error) {
 
 	wg.Wait()
 
+	// Rebuild prevNet with only containers still present so stale IDs don't accumulate.
 	c.mu.Lock()
+	newPrevNet := make(map[string][2]uint64, len(ctrs))
+	for _, ctr := range ctrs {
+		if v, ok := c.prevNet[ctr.ID]; ok {
+			newPrevNet[ctr.ID] = v
+		}
+	}
+	c.prevNet = newPrevNet
 	c.prevNetTime = now
 	c.mu.Unlock()
 
