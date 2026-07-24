@@ -20,10 +20,6 @@
   let bgBlur = $state(0)
   let bgUploading = $state(false)
   let darkMode = $state(false)
-  let historyEnabled = $state(true)
-  let retentionDays = $state(7)
-  let historyRange = $state('24h')
-  let historyLoading = $state(false)
 
   let services = $state([])
   let ws
@@ -41,8 +37,6 @@
       services = cfg.services ?? []
       bgInput = cfg.background ?? ''
       bgBlur = cfg.background_blur ?? 0
-      retentionDays = cfg.retention_days ?? 7
-      historyEnabled = cfg.history_enabled ?? true
       if (bgInput) applyBg(bgInput)
       applyBlur(bgBlur)
     } catch (e) {
@@ -50,7 +44,7 @@
     }
   }
 
-  async function saveConfig(newServices, newBg, newBlur, newRetention) {
+  async function saveConfig(newServices, newBg, newBlur) {
     try {
       await fetch('/api/config', {
         method: 'POST',
@@ -59,58 +53,11 @@
           services: newServices,
           background: newBg,
           background_blur: newBlur ?? bgBlur,
-          retention_days: newRetention ?? retentionDays,
         }),
       })
     } catch (e) {
       console.error('Failed to save config:', e)
     }
-  }
-
-  // ── History ───────────────────────────────────────────────────────────────
-
-  const RANGE_PARAMS = {
-    '1h':  { seconds: 3600,   resolution: 10  },
-    '6h':  { seconds: 21600,  resolution: 30  },
-    '24h': { seconds: 86400,  resolution: 30  },
-    '7d':  { seconds: 604800, resolution: 300 },
-  }
-
-  async function loadHistory(range) {
-    const params = RANGE_PARAMS[range]
-    if (!params) return
-    historyLoading = true
-    try {
-      const now = Math.floor(Date.now() / 1000)
-      const from = now - params.seconds
-      const res = await fetch(`/api/history?from=${from}&to=${now}&resolution=${params.resolution}`)
-      if (!res.ok) return
-      const data = await res.json()
-
-      // Transform stored flat stats to the nested shape SystemStats.svelte expects
-      history = (data.system ?? []).map(s => ({
-        cpu:  { usage_percent: s.cpu_percent },
-        ram:  { usage_percent: s.ram_percent, used_mb: s.ram_used_mb, total_mb: 0 },
-        disk: { usage_percent: s.disk_percent },
-        temp: { cpu_temp_c: s.temp_c },
-        net:  { rx_bytes_s: s.net_rx_bytes_s, tx_bytes_s: s.net_tx_bytes_s },
-      }))
-
-      const newContainerHistory = {}
-      for (const [name, stats] of Object.entries(data.containers ?? {})) {
-        newContainerHistory[name] = stats
-      }
-      containerHistory = newContainerHistory
-    } catch (e) {
-      console.error('Failed to load history:', e)
-    } finally {
-      historyLoading = false
-    }
-  }
-
-  function setRange(range) {
-    historyRange = range
-    loadHistory(range)
   }
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
@@ -123,7 +70,7 @@
       const data = JSON.parse(e.data)
       if (data.system) {
         system = data.system
-        if (historyEnabled) history = [...history.slice(-9999), data.system]
+        history = [...history.slice(-9999), data.system]
       }
       if (data.containers) {
         const now = Math.floor(Date.now() / 1000)
@@ -167,14 +114,14 @@
 
   function handleDarkToggle() {
     toggleDark()
-    saveConfig(services, bgInput, bgBlur, retentionDays)
+    saveConfig(services, bgInput, bgBlur)
   }
 
   // ── Services ──────────────────────────────────────────────────────────────
 
   function onServicesChange(updated) {
     services = updated
-    saveConfig(services, bgInput, bgBlur, retentionDays)
+    saveConfig(services, bgInput, bgBlur)
   }
 
   // ── Background ────────────────────────────────────────────────────────────
@@ -213,7 +160,7 @@
       const { url } = await res.json()
       bgInput = url
       applyBg(url)
-      saveConfig(services, url, bgBlur, retentionDays)
+      saveConfig(services, url, bgBlur)
       showBgPanel = false
     } catch {
       console.error('Background upload failed')
@@ -226,7 +173,7 @@
   function saveBg() {
     applyBg(bgInput)
     applyBlur(bgBlur)
-    saveConfig(services, bgInput, bgBlur, retentionDays)
+    saveConfig(services, bgInput, bgBlur)
     showBgPanel = false
   }
 
@@ -235,7 +182,7 @@
     bgBlur = 0
     applyBg('')
     applyBlur(0)
-    saveConfig(services, '', 0, retentionDays)
+    saveConfig(services, '', 0)
     showBgPanel = false
   }
 
@@ -245,15 +192,7 @@
   }
 
   function handleBlurCommit() {
-    saveConfig(services, bgInput, bgBlur, retentionDays)
-  }
-
-  function handleRetentionChange(e) {
-    retentionDays = parseInt(e.target.value) || 7
-  }
-
-  function handleRetentionCommit() {
-    saveConfig(services, bgInput, bgBlur, retentionDays)
+    saveConfig(services, bgInput, bgBlur)
   }
 
   // ── Clock ─────────────────────────────────────────────────────────────────
@@ -271,7 +210,7 @@
     connect()
     tickClock()
     clockId = setInterval(tickClock, 1000)
-    loadConfig().then(() => { if (historyEnabled) loadHistory('24h') })
+    loadConfig()
   })
 
   onDestroy(() => {
@@ -359,27 +298,6 @@
               />
             </div>
 
-            {#if historyEnabled}
-              <div class="settings-divider"></div>
-
-              <!-- Data -->
-              <p class="settings-section-label">Data</p>
-
-              <div class="slider-row">
-                <label class="slider-label" for="retention-slider">
-                  History retention <span class="slider-val">{retentionDays} days</span>
-                </label>
-                <input
-                  id="retention-slider"
-                  type="range" min="1" max="90" step="1"
-                  value={retentionDays}
-                  oninput={handleRetentionChange}
-                  onchange={handleRetentionCommit}
-                  class="dash-slider"
-                />
-              </div>
-            {/if}
-
           </div>
         {/if}
       </div>
@@ -408,13 +326,6 @@
           <div class="header-right-controls">
             {#if system.info?.uptime}
               <span class="uptime-badge">↑ {system.info.uptime}</span>
-            {/if}
-            {#if historyEnabled}
-              <div class="range-picker card-surface" class:loading={historyLoading}>
-                {#each ['1h', '6h', '24h', '7d'] as r}
-                  <button class:active={historyRange === r} onclick={() => setRange(r)}>{r}</button>
-                {/each}
-              </div>
             {/if}
           </div>
         </div>
@@ -590,12 +501,6 @@
     text-transform: uppercase;
     color: var(--text-3);
     margin: 0;
-  }
-
-  .settings-divider {
-    height: 1px;
-    background: var(--border-subtle);
-    margin: 0.1rem 0;
   }
 
   /* Row with label + control side by side */
@@ -871,38 +776,6 @@
     white-space: nowrap;
   }
 
-  /* History range picker */
-  .range-picker {
-    display: flex;
-    padding: 3px;
-    gap: 2px;
-    border-radius: 10px;
-    opacity: 1;
-    transition: opacity 0.2s;
-  }
-
-  .range-picker.loading { opacity: 0.5; pointer-events: none; }
-
-  .range-picker button {
-    padding: 0.25rem 0.7rem;
-    border-radius: 7px;
-    border: none;
-    background: transparent;
-    color: var(--text-2);
-    font-size: 0.72rem;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-    letter-spacing: -0.01em;
-    transition: background 0.15s, color 0.15s;
-  }
-
-  .range-picker button.active {
-    background: var(--pill-hover);
-    color: var(--text);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  }
-
   .widget-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -914,7 +787,6 @@
   @media (max-width: 768px) {
     main { padding: 1rem; gap: 2rem; }
     .widget-row { grid-template-columns: 1fr; }
-    .range-picker button { padding: 0.22rem 0.5rem; font-size: 0.68rem; }
   }
 
   @media (max-width: 600px) {

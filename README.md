@@ -6,7 +6,7 @@ A self-hosted homelab dashboard for Raspberry Pi. Shows live system stats, Docke
 
 ## Features
 
-- **System overview** — CPU, RAM, disk, temperature, and network — live gauges or historical sparkline graphs with averages
+- **System overview** — CPU, RAM, disk, temperature, and network — live gauges or live sparkline graphs with rolling averages
 - **Docker containers** — live status for all running containers, grouped by label
 - **Pi-hole** — query stats, blocked percentage, and domains blocked
 - **Immich** — photo/video count and storage usage
@@ -20,7 +20,7 @@ A self-hosted homelab dashboard for Raspberry Pi. Shows live system stats, Docke
 | Layer | Tech |
 |---|---|
 | Backend | Go — WebSocket hub, REST API, Docker & Pi-hole & Immich clients |
-| Frontend | Svelte 5, plain CSS, pure SVG charts (no chart libraries) |
+| Frontend | Svelte 5, plain CSS, Chart.js for live sparklines |
 | Deployment | Single Docker image, multi-stage build (~50MB) |
 
 ## Getting started

@@ -8,12 +8,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/tuurk/dashboard/internal/config"
-	"github.com/tuurk/dashboard/internal/store"
 	"github.com/tuurk/dashboard/internal/ws"
 )
 
@@ -25,15 +23,13 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
-	hub            *ws.Hub
-	cfgStore       *config.Store
-	statsStore     *store.DB
-	uploadsDir     string
-	historyEnabled bool
+	hub        *ws.Hub
+	cfgStore   *config.Store
+	uploadsDir string
 }
 
-func NewHandler(hub *ws.Hub, cfgStore *config.Store, statsStore *store.DB, uploadsDir string, historyEnabled bool) *Handler {
-	return &Handler{hub: hub, cfgStore: cfgStore, statsStore: statsStore, uploadsDir: uploadsDir, historyEnabled: historyEnabled}
+func NewHandler(hub *ws.Hub, cfgStore *config.Store, uploadsDir string) *Handler {
+	return &Handler{hub: hub, cfgStore: cfgStore, uploadsDir: uploadsDir}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, staticDir string) {
@@ -45,7 +41,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, staticDir string) {
 	})
 
 	mux.HandleFunc("/api/config", h.handleConfig)
-	mux.HandleFunc("/api/history", h.handleHistory)
 	mux.HandleFunc("/api/upload", h.handleUpload)
 
 	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(h.uploadsDir))))
@@ -83,10 +78,7 @@ func (h *Handler) handleConfig(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(struct {
-			*config.Config
-			HistoryEnabled bool `json:"history_enabled"`
-		}{cfg, h.historyEnabled})
+		json.NewEncoder(w).Encode(cfg)
 
 	case http.MethodPost:
 		var cfg config.Config
@@ -103,49 +95,6 @@ func (h *Handler) handleConfig(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-func (h *Handler) handleHistory(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if h.statsStore == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"system":[],"containers":{}}`))
-		return
-	}
-
-	now := time.Now().Unix()
-	from := now - 86400
-	to := now
-	resolution := int64(0) // 0 = auto (minResolution applies in QueryRange)
-
-	q := r.URL.Query()
-	if v := q.Get("from"); v != "" {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
-			from = n
-		}
-	}
-	if v := q.Get("to"); v != "" {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
-			to = n
-		}
-	}
-	if v := q.Get("resolution"); v != "" {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
-			resolution = n
-		}
-	}
-
-	result, err := h.statsStore.QueryRange(from, to, resolution)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
 }
 
 func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {

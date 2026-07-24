@@ -17,7 +17,6 @@ type Config struct {
 	Services       []Service `json:"services"`
 	Background     string    `json:"background"`
 	BackgroundBlur float64   `json:"background_blur"`
-	RetentionDays  int       `json:"retention_days"`
 }
 
 type Store struct {
@@ -50,9 +49,6 @@ func (s *Store) Load() (*Config, error) {
 	}
 	if cfg.Services == nil {
 		cfg.Services = []Service{}
-	}
-	if cfg.RetentionDays <= 0 {
-		cfg.RetentionDays = 7
 	}
 	return &cfg, nil
 }
