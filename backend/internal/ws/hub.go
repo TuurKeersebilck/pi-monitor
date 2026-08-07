@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	fastPollInterval = 1 * time.Second  // system stats + containers
-	slowPollInterval = 30 * time.Second // pi-hole + immich (overview data)
+	fastPollInterval      = 1 * time.Second  // system stats
+	containerPollInterval = 3 * time.Second  // docker container stats (expensive: one Docker API call per container)
+	slowPollInterval      = 30 * time.Second // pi-hole + immich (overview data)
 )
 
 type Payload struct {
@@ -56,6 +57,7 @@ func (h *Hub) AddClient(conn *websocket.Conn) {
 	}
 
 	go h.broadcastFast()
+	go h.broadcastContainers()
 	go h.broadcastSlow()
 }
 
@@ -88,6 +90,19 @@ func (h *Hub) startPolling() {
 				return
 			case <-ticker.C:
 				h.broadcastFast()
+			}
+		}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(containerPollInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				h.broadcastContainers()
 			}
 		}
 	}()
@@ -126,33 +141,24 @@ func (h *Hub) send(payload Payload) {
 }
 
 func (h *Hub) broadcastFast() {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	stats, err := system.GetStats()
+	if err != nil {
+		log.Printf("ws: system stats error: %v", err)
+		return
+	}
+	h.send(Payload{System: stats})
+}
+
+func (h *Hub) broadcastContainers() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		stats, err := system.GetStats()
-		if err != nil {
-			log.Printf("ws: system stats error: %v", err)
-		} else {
-			h.send(Payload{System: stats})
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		containers, err := h.docker.ListContainers(ctx)
-		if err != nil {
-			log.Printf("ws: docker error: %v", err)
-		} else {
-			h.send(Payload{Containers: containers})
-		}
-	}()
-
-	wg.Wait()
+	containers, err := h.docker.ListContainers(ctx)
+	if err != nil {
+		log.Printf("ws: docker error: %v", err)
+		return
+	}
+	h.send(Payload{Containers: containers})
 }
 
 func (h *Hub) broadcastSlow() {
