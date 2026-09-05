@@ -35,6 +35,9 @@ type Hub struct {
 	pihole     *pihole.Client
 	immich     *immich.Client
 	cancelPoll context.CancelFunc
+
+	containerPollMu   sync.Mutex
+	lastContainerPoll time.Time
 }
 
 func NewHub(dockerClient *docker.Client, piholeClient *pihole.Client, immichClient *immich.Client) *Hub {
@@ -57,7 +60,7 @@ func (h *Hub) AddClient(conn *websocket.Conn) {
 	}
 
 	go h.broadcastFast()
-	go h.broadcastContainers()
+	go h.broadcastContainersThrottled()
 	go h.broadcastSlow()
 }
 
@@ -81,44 +84,23 @@ func (h *Hub) startPolling() {
 	ctx, cancel := context.WithCancel(context.Background())
 	h.cancelPoll = cancel
 
-	go func() {
-		ticker := time.NewTicker(fastPollInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				h.broadcastFast()
-			}
-		}
-	}()
+	go h.pollEvery(ctx, fastPollInterval, h.broadcastFast)
+	go h.pollEvery(ctx, containerPollInterval, h.broadcastContainersThrottled)
+	go h.pollEvery(ctx, slowPollInterval, h.broadcastSlow)
+}
 
-	go func() {
-		ticker := time.NewTicker(containerPollInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				h.broadcastContainers()
-			}
+// pollEvery calls fn on every tick of interval until ctx is cancelled.
+func (h *Hub) pollEvery(ctx context.Context, interval time.Duration, fn func()) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			fn()
 		}
-	}()
-
-	go func() {
-		ticker := time.NewTicker(slowPollInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				h.broadcastSlow()
-			}
-		}
-	}()
+	}
 }
 
 func (h *Hub) send(payload Payload) {
@@ -147,6 +129,25 @@ func (h *Hub) broadcastFast() {
 		return
 	}
 	h.send(Payload{System: stats})
+}
+
+// broadcastContainersThrottled runs broadcastContainers unless the last run
+// was less than containerPollInterval ago. Container stats are expensive
+// (one Docker API call per container), and both the poll ticker and every
+// new client connection call this -- without throttling, a flaky connection
+// or several tabs reconnecting fires far more of these scans than the
+// ticker alone ever would, which is exactly the "hammering" this interval
+// was introduced to stop.
+func (h *Hub) broadcastContainersThrottled() {
+	h.containerPollMu.Lock()
+	if time.Since(h.lastContainerPoll) < containerPollInterval {
+		h.containerPollMu.Unlock()
+		return
+	}
+	h.lastContainerPoll = time.Now()
+	h.containerPollMu.Unlock()
+
+	h.broadcastContainers()
 }
 
 func (h *Hub) broadcastContainers() {

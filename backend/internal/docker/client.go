@@ -57,11 +57,18 @@ type containerStatsJSON struct {
 	} `json:"networks"`
 }
 
+// netSample bundles a container's network byte counters with the moment
+// they were captured, so a rate calculation always pairs bytes and time
+// from the same snapshot -- see ListContainers for why that matters.
+type netSample struct {
+	rx, tx uint64
+	at     time.Time
+}
+
 type Client struct {
-	cli         *client.Client
-	mu          sync.Mutex
-	prevNet     map[string][2]uint64 // containerID -> [totalRx, totalTx]
-	prevNetTime time.Time
+	cli     *client.Client
+	mu      sync.Mutex
+	prevNet map[string]netSample // containerID -> last snapshot
 }
 
 func NewClient() (*Client, error) {
@@ -69,7 +76,7 @@ func NewClient() (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{cli: cli, prevNet: make(map[string][2]uint64)}, nil
+	return &Client{cli: cli, prevNet: make(map[string]netSample)}, nil
 }
 
 const maxStatsWorkers = 8
@@ -79,14 +86,6 @@ func (c *Client) ListContainers(ctx context.Context) ([]ContainerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	now := time.Now()
-	c.mu.Lock()
-	elapsed := 0.0
-	if !c.prevNetTime.IsZero() {
-		elapsed = now.Sub(c.prevNetTime).Seconds()
-	}
-	c.mu.Unlock()
 
 	results := make([]ContainerInfo, len(ctrs))
 	sem := make(chan struct{}, maxStatsWorkers)
@@ -116,7 +115,7 @@ func (c *Client) ListContainers(ctx context.Context) ([]ContainerInfo, error) {
 			}
 
 			if ctr.State == "running" {
-				c.fillStats(ctx, &info, ctr.ID, elapsed)
+				c.fillStats(ctx, &info, ctr.ID)
 			}
 
 			results[i] = info
@@ -127,20 +126,19 @@ func (c *Client) ListContainers(ctx context.Context) ([]ContainerInfo, error) {
 
 	// Rebuild prevNet with only containers still present so stale IDs don't accumulate.
 	c.mu.Lock()
-	newPrevNet := make(map[string][2]uint64, len(ctrs))
+	newPrevNet := make(map[string]netSample, len(ctrs))
 	for _, ctr := range ctrs {
 		if v, ok := c.prevNet[ctr.ID]; ok {
 			newPrevNet[ctr.ID] = v
 		}
 	}
 	c.prevNet = newPrevNet
-	c.prevNetTime = now
 	c.mu.Unlock()
 
 	return results, nil
 }
 
-func (c *Client) fillStats(ctx context.Context, info *ContainerInfo, id string, elapsed float64) {
+func (c *Client) fillStats(ctx context.Context, info *ContainerInfo, id string) {
 	resp, err := c.cli.ContainerStats(ctx, id, false)
 	if err != nil {
 		log.Printf("docker: stats unavailable for %s: %v", info.Name, err)
@@ -177,21 +175,29 @@ func (c *Client) fillStats(ctx context.Context, info *ContainerInfo, id string, 
 		info.MemPercent = round(float64(memUsed)/float64(s.MemoryStats.Limit)*100, 1)
 	}
 
-	// Network — sum across all interfaces, compute bytes/sec from stored previous snapshot
+	// Network — sum across all interfaces, compute bytes/sec from this
+	// container's own previous snapshot. Bytes and timestamp are captured
+	// and stored together (not a shared batch-level timestamp), so an
+	// overlapping ListContainers call for a different container -- or even
+	// this same one -- can never pair one snapshot's bytes with another
+	// snapshot's time.
 	var totalRx, totalTx uint64
 	for _, iface := range s.Networks {
 		totalRx += iface.RxBytes
 		totalTx += iface.TxBytes
 	}
+	now := time.Now()
 
 	c.mu.Lock()
 	prev, hasPrev := c.prevNet[id]
-	c.prevNet[id] = [2]uint64{totalRx, totalTx}
+	c.prevNet[id] = netSample{rx: totalRx, tx: totalTx, at: now}
 	c.mu.Unlock()
 
-	if hasPrev && elapsed > 0 {
-		info.NetRxBytesS = round(float64(totalRx-prev[0])/elapsed, 0)
-		info.NetTxBytesS = round(float64(totalTx-prev[1])/elapsed, 0)
+	if hasPrev {
+		if elapsed := now.Sub(prev.at).Seconds(); elapsed > 0 {
+			info.NetRxBytesS = round(float64(totalRx-prev.rx)/elapsed, 0)
+			info.NetTxBytesS = round(float64(totalTx-prev.tx)/elapsed, 0)
+		}
 	}
 }
 

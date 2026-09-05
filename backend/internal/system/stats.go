@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -112,6 +113,15 @@ func getSysInfo() SysInfo {
 	return SysInfo{Hostname: hostname, IP: ip, Uptime: uptime}
 }
 
+// statsMu guards prevCPUStat, prevNetStats, and prevNetTime below. GetStats
+// is called both from a fixed-interval ticker and immediately on every new
+// client connection (see ws.Hub.AddClient / broadcastFast), so concurrent
+// calls are a real occurrence, not a hypothetical -- without a lock, this
+// was unsynchronized concurrent read/write on package-level slice and map
+// variables, which is undefined behavior in Go (data races, not just wrong
+// numbers).
+var statsMu sync.Mutex
+
 // prevCPUStat holds the last CPU snapshot for delta-based measurement across polls.
 var prevCPUStat []uint64
 
@@ -122,6 +132,9 @@ func getCPU() (CPUStats, error) {
 	if err != nil {
 		return CPUStats{}, err
 	}
+
+	statsMu.Lock()
+	defer statsMu.Unlock()
 
 	if prevCPUStat == nil {
 		prevCPUStat = cur
@@ -244,6 +257,9 @@ var (
 func getNetwork() NetworkStats {
 	cur := readNetDev()
 	now := time.Now()
+
+	statsMu.Lock()
+	defer statsMu.Unlock()
 
 	if prevNetStats == nil {
 		prevNetStats = cur
