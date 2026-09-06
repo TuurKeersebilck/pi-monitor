@@ -161,7 +161,7 @@
       bgInput = url
       applyBg(url)
       saveConfig(services, url, bgBlur)
-      showBgPanel = false
+      showSettings = false
     } catch {
       console.error('Background upload failed')
     } finally {
@@ -174,7 +174,7 @@
     applyBg(bgInput)
     applyBlur(bgBlur)
     saveConfig(services, bgInput, bgBlur)
-    showBgPanel = false
+    showSettings = false
   }
 
   function clearBg() {
@@ -183,7 +183,7 @@
     applyBg('')
     applyBlur(0)
     saveConfig(services, '', 0)
-    showBgPanel = false
+    showSettings = false
   }
 
   function handleBlurChange(e) {

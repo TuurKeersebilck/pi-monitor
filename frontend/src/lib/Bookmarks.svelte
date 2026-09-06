@@ -68,6 +68,7 @@
 
   const PALETTE = ['#007AFF','#34C759','#FF9500','#AF52DE','#FF2D55','#00C7BE','#FF6B35','#5856D6']
   function letterColor(name) {
+    if (!name) return PALETTE[0]
     return PALETTE[(name.charCodeAt(0) + name.length) % PALETTE.length]
   }
 
@@ -80,7 +81,7 @@
 <svelte:window onkeydown={handleKey} />
 
 <div class="grid">
-  {#each services as service, i (service.name + i)}
+  {#each services as service, i (service.name)}
     <div class="wrap">
       <button class="remove-btn" onclick={() => remove(i)} title="Remove {service.name}" aria-label="Remove {service.name}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10">
@@ -96,7 +97,7 @@
       <a class="card" href={service.url} target="_blank" rel="noopener noreferrer">
         <div class="icon-box" style={service.icon ? '' : `background:${letterColor(service.name)}`}>
           {#if !service.icon}
-            <span class="letter">{service.name[0].toUpperCase()}</span>
+            <span class="letter">{(service.name?.[0] ?? '?').toUpperCase()}</span>
           {/if}
           <img
             src={iconSrc(service)}

@@ -123,6 +123,10 @@ func (c *Client) GetStats() (*Stats, error) {
 		defer resp.Body.Close()
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("pihole API returned %d", resp.StatusCode)
+	}
+
 	var summary summaryResponse
 	if err := json.NewDecoder(resp.Body).Decode(&summary); err != nil {
 		return nil, fmt.Errorf("decode summary: %w", err)
