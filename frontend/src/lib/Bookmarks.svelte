@@ -7,6 +7,7 @@
   let form = $state({ name: '', url: '', icon: '' })
   let error = $state('')
   let uploading = $state(false)
+  let openMenu = $state(null)
 
   function openDialog() {
     form = { name: '', url: '', icon: '' }
@@ -73,7 +74,11 @@
   }
 
   function handleKey(e) {
-    if (e.key === 'Escape') showDialog = false
+    if (e.key === 'Escape') {
+      if (openMenu !== null) { openMenu = null; return }
+      showDialog = false
+      return
+    }
     if (e.key === 'Enter' && showDialog) saveService()
   }
 </script>
@@ -83,17 +88,23 @@
 <div class="grid">
   {#each services as service, i (service.name)}
     <div class="wrap">
-      <button class="remove-btn" onclick={() => remove(i)} title="Remove {service.name}" aria-label="Remove {service.name}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10">
-          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      <button
+        class="menu-btn"
+        onclick={(e) => { e.stopPropagation(); openMenu = openMenu === i ? null : i }}
+        title="Options for {service.name}"
+        aria-label="Options for {service.name}"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+          <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
         </svg>
       </button>
-      <button class="edit-btn" onclick={() => openEditDialog(i)} title="Edit {service.name}" aria-label="Edit {service.name}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-      </button>
+      {#if openMenu === i}
+        <div class="menu-backdrop" role="presentation" onclick={() => openMenu = null}></div>
+        <div class="tile-menu">
+          <button class="tile-menu-item" onclick={() => { openMenu = null; openEditDialog(i) }}>Edit</button>
+          <button class="tile-menu-item danger" onclick={() => { openMenu = null; remove(i) }}>Delete</button>
+        </div>
+      {/if}
       <a class="card" href={service.url} target="_blank" rel="noopener noreferrer">
         <div class="icon-box" style={service.icon ? '' : `background:${letterColor(service.name)}`}>
           {#if !service.icon}
@@ -185,30 +196,7 @@
 
   .wrap { position: relative; }
 
-  .remove-btn {
-    position: absolute;
-    top: 5px;
-    left: 5px;
-    z-index: 10;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #ff3b30;
-    border: 2px solid white;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    opacity: 0;
-    transition: opacity 0.15s;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-  }
-
-  .wrap:hover .remove-btn { opacity: 1; }
-
-  .edit-btn {
+  .menu-btn {
     position: absolute;
     top: 5px;
     right: 5px;
@@ -216,8 +204,10 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #007AFF;
-    border: 2px solid white;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: none;
     color: white;
     cursor: pointer;
     display: flex;
@@ -225,11 +215,54 @@
     justify-content: center;
     padding: 0;
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s, background 0.15s;
     box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   }
 
-  .wrap:hover .edit-btn { opacity: 1; }
+  .menu-btn:hover { background: rgba(0,0,0,0.65); }
+
+  .wrap:hover .menu-btn, .menu-btn:focus-visible { opacity: 1; }
+
+  .menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: transparent;
+  }
+
+  .tile-menu {
+    position: absolute;
+    top: 28px;
+    right: 5px;
+    z-index: 50;
+    min-width: 110px;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    overflow: hidden;
+    padding: 4px;
+  }
+
+  .tile-menu-item {
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 8px;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+
+  .tile-menu-item:hover { background: var(--pill); }
+
+  .tile-menu-item.danger { color: #ff3b30; }
 
   .card {
     display: flex;
@@ -342,9 +375,7 @@
   }
 
   .dialog {
-    background: var(--card-bg);
-    backdrop-filter: blur(32px) saturate(1.8);
-    -webkit-backdrop-filter: blur(32px) saturate(1.8);
+    background: var(--bg-elevated);
     border: 1px solid var(--card-border);
     border-radius: 24px;
     padding: 1.75rem;
