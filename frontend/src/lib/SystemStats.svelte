@@ -2,8 +2,10 @@
   import { tweened } from 'svelte/motion'
   import { cubicOut } from 'svelte/easing'
   import { fade } from 'svelte/transition'
-  import { onMount, onDestroy } from 'svelte'
+  import { onDestroy } from 'svelte'
   import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip, Legend } from 'chart.js'
+  import { fmtBytes, fmtBytesUnit, avg } from './format.js'
+  import { isDark, tooltipTheme, chartGridColor, makeGradient } from './chartTheme.js'
 
   Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip, Legend)
 
@@ -32,12 +34,6 @@
     return '#34c759'
   }
 
-  function fmtBytes(bps) {
-    if (bps >= 1_048_576) return (bps / 1_048_576).toFixed(1) + ' MB/s'
-    if (bps >= 1024) return (bps / 1024).toFixed(0) + ' KB/s'
-    return bps.toFixed(0) + ' B/s'
-  }
-
   // ── Chart.js setup ──
   let cpuCanvas = $state()
   let ramCanvas = $state()
@@ -48,37 +44,8 @@
 
   const MAX_POINTS = 120
 
-  function isDark() {
-    return document.documentElement.classList.contains('dark')
-  }
-
   function chartTextColor() {
     return isDark() ? 'rgba(240,240,245,0.55)' : 'rgba(28,28,30,0.55)'
-  }
-
-  function chartGridColor() {
-    return isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
-  }
-
-  function createGradient(ctx, color, height) {
-    const gradient = ctx.createLinearGradient(0, 0, 0, height)
-    gradient.addColorStop(0, color.replace(')', ',0.3)').replace('rgb', 'rgba'))
-    gradient.addColorStop(1, color.replace(')', ',0)').replace('rgb', 'rgba'))
-    return gradient
-  }
-
-  function hexToRgba(hex, alpha) {
-    const r = parseInt(hex.slice(1, 3), 16)
-    const g = parseInt(hex.slice(3, 5), 16)
-    const b = parseInt(hex.slice(5, 7), 16)
-    return `rgba(${r},${g},${b},${alpha})`
-  }
-
-  function makeGradient(ctx, hex, h) {
-    const grad = ctx.createLinearGradient(0, 0, 0, h)
-    grad.addColorStop(0, hexToRgba(hex, 0.3))
-    grad.addColorStop(1, hexToRgba(hex, 0))
-    return grad
   }
 
   function baseOptions(min = 0, max = 100) {
@@ -90,10 +57,7 @@
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: isDark() ? 'rgba(30,30,34,0.92)' : 'rgba(255,255,255,0.92)',
-          titleColor: isDark() ? '#f0f0f5' : '#1c1c1e',
-          bodyColor: isDark() ? '#a0a0a8' : '#6c6c70',
-          borderColor: isDark() ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+          ...tooltipTheme(),
           borderWidth: 1,
           padding: 8,
           cornerRadius: 8,
@@ -167,11 +131,7 @@
     const ctx = canvas.getContext('2d')
     const h = canvas.parentElement?.clientHeight || 72
     const options = baseOptions(0, 100)
-    options.scales.y.ticks.callback = (v) => {
-      if (v >= 1048576) return (v / 1048576).toFixed(1) + ' MB'
-      if (v >= 1024) return (v / 1024).toFixed(0) + ' KB'
-      return v + ' B'
-    }
+    options.scales.y.ticks.callback = (v) => fmtBytesUnit(v)
     options.plugins.tooltip.callbacks = {
       label: (ctx) => `${ctx.dataset.label}: ${fmtBytes(ctx.parsed.y)}`
     }
@@ -284,11 +244,6 @@
     if (s < 60) return `${s}s`
     return `${Math.floor(s / 60)}m ${s % 60}s`
   })
-
-  function avg(arr) {
-    if (!arr.length) return 0
-    return arr.reduce((a, b) => a + b, 0) / arr.length
-  }
 
   onDestroy(() => {
     cpuChart?.destroy()

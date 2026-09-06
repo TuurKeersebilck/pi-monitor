@@ -1,6 +1,8 @@
 <script>
   import { onDestroy } from 'svelte'
   import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip } from 'chart.js'
+  import { fmtBytes, fmtMem, avg } from './format.js'
+  import { isDark, tooltipTheme, chartGridColor, makeGradient } from './chartTheme.js'
   Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip)
 
   let { containers = [], containerHistory = {} } = $props()
@@ -8,24 +10,17 @@
   let expanded = $state(null)
   let sparkCpuCanvas = $state(null)
   let sparkRamCanvas = $state(null)
-  let sparkCpuChart = null
-  let sparkRamChart = null
+
+  // Both sparklines (CPU/RAM) are built and refreshed identically except
+  // for which canvas/field/color they use -- looped over instead of
+  // duplicating the create/update logic per metric.
+  const SPARK_METRICS = [
+    { get canvas() { return sparkCpuCanvas }, key: 'cpu_percent', label: 'CPU %', color: '#007AFF', chart: null },
+    { get canvas() { return sparkRamCanvas }, key: 'mem_percent', label: 'RAM %', color: '#34c759', chart: null },
+  ]
 
   function toggle(name) {
     expanded = expanded === name ? null : name
-  }
-
-  function fmtBytes(bps) {
-    if (!bps || bps <= 0) return '0 B/s'
-    if (bps >= 1_048_576) return (bps / 1_048_576).toFixed(1) + ' MB/s'
-    if (bps >= 1024) return (bps / 1024).toFixed(0) + ' KB/s'
-    return Math.round(bps) + ' B/s'
-  }
-
-  function fmtMem(mb) {
-    if (!mb) return '0 MB'
-    if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB'
-    return Math.round(mb) + ' MB'
   }
 
   function shortImage(image) {
@@ -41,11 +36,6 @@
     if (pct >= 90) return 'var(--red)'
     if (pct >= 75) return 'var(--orange)'
     return null
-  }
-
-  function avg(arr, key) {
-    if (!arr?.length) return 0
-    return arr.reduce((s, d) => s + (d[key] ?? 0), 0) / arr.length
   }
 
   // Sort: running first, then preserve arrival order
@@ -65,16 +55,10 @@
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
   })
 
-  function isDark() {
-    return document.documentElement.classList.contains('dark')
-  }
-
-  function makeSparkChart(canvas, label, borderColor, gradStart, gradEnd, data) {
+  function makeSparkChart(canvas, label, borderColor, data) {
     const dark = isDark()
     const ctx = canvas.getContext('2d')
-    const grad = ctx.createLinearGradient(0, 0, 0, 64)
-    grad.addColorStop(0, gradStart)
-    grad.addColorStop(1, gradEnd)
+    const grad = makeGradient(ctx, borderColor, 64, 0.22)
     return new Chart(canvas, {
       type: 'line',
       data: {
@@ -99,10 +83,7 @@
           legend: { display: false },
           tooltip: {
             callbacks: { label: c => `${label}: ${c.parsed.y.toFixed(1)}%` },
-            backgroundColor: dark ? 'rgba(30,30,34,0.92)' : 'rgba(255,255,255,0.92)',
-            titleColor: dark ? '#f0f0f5' : '#1c1c1e',
-            bodyColor: dark ? '#a0a0a8' : '#6c6c70',
-            borderColor: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+            ...tooltipTheme(dark),
             borderWidth: 1,
             padding: 6,
             cornerRadius: 6,
@@ -114,7 +95,7 @@
             min: 0,
             max: 100,
             border: { display: false },
-            grid: { color: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' },
+            grid: { color: chartGridColor(dark) },
             ticks: {
               callback: v => v + '%',
               maxTicksLimit: 3,
@@ -129,43 +110,35 @@
   }
 
   function destroyCharts() {
-    sparkCpuChart?.destroy(); sparkCpuChart = null
-    sparkRamChart?.destroy(); sparkRamChart = null
+    for (const m of SPARK_METRICS) {
+      m.chart?.destroy()
+      m.chart = null
+    }
   }
 
   // Create/recreate both charts when expanded row changes
   $effect(() => {
     if (!expanded) { destroyCharts(); return }
     requestAnimationFrame(() => {
-      if (!sparkCpuCanvas || !sparkRamCanvas) return
+      if (SPARK_METRICS.some(m => !m.canvas)) return
       destroyCharts()
       const hist = containerHistory[expanded] ?? []
-      sparkCpuChart = makeSparkChart(
-        sparkCpuCanvas, 'CPU %', '#007AFF',
-        'rgba(0,122,255,0.22)', 'rgba(0,122,255,0)',
-        hist.map(d => d.cpu_percent ?? 0)
-      )
-      sparkRamChart = makeSparkChart(
-        sparkRamCanvas, 'RAM %', '#34c759',
-        'rgba(52,199,89,0.22)', 'rgba(52,199,89,0)',
-        hist.map(d => d.mem_percent ?? 0)
-      )
+      for (const m of SPARK_METRICS) {
+        m.chart = makeSparkChart(m.canvas, m.label, m.color, hist.map(d => d[m.key] ?? 0))
+      }
     })
   })
 
   // Live-update both charts when history changes
   $effect(() => {
-    if (!sparkCpuChart || !sparkRamChart || !expanded) return
+    if (!expanded || SPARK_METRICS.some(m => !m.chart)) return
     const hist = containerHistory[expanded] ?? []
-    const cpuData = hist.map(d => d.cpu_percent ?? 0)
-    const ramData = hist.map(d => d.mem_percent ?? 0)
-    const labels = cpuData.map((_, i) => i)
-    sparkCpuChart.data.labels = labels
-    sparkCpuChart.data.datasets[0].data = cpuData
-    sparkCpuChart.update('none')
-    sparkRamChart.data.labels = labels
-    sparkRamChart.data.datasets[0].data = ramData
-    sparkRamChart.update('none')
+    for (const m of SPARK_METRICS) {
+      const data = hist.map(d => d[m.key] ?? 0)
+      m.chart.data.labels = data.map((_, i) => i)
+      m.chart.data.datasets[0].data = data
+      m.chart.update('none')
+    }
   })
 
   onDestroy(destroyCharts)
@@ -248,13 +221,13 @@
             <div class="expand-avgs">
               <div class="avg-item">
                 <span class="avg-label">avg CPU</span>
-                <span class="avg-val" style="color:#007AFF">{avg(hist, 'cpu_percent').toFixed(1)}%</span>
+                <span class="avg-val" style="color:#007AFF">{avg(hist.map(d => d.cpu_percent ?? 0)).toFixed(1)}%</span>
               </div>
               <div class="avg-divider"></div>
               <div class="avg-item">
                 <span class="avg-label">avg RAM</span>
-                <span class="avg-val" style="color:#34c759">{avg(hist, 'mem_percent').toFixed(1)}%</span>
-                <span class="avg-sub">{fmtMem(avg(hist, 'mem_used_mb'))}</span>
+                <span class="avg-val" style="color:#34c759">{avg(hist.map(d => d.mem_percent ?? 0)).toFixed(1)}%</span>
+                <span class="avg-sub">{fmtMem(avg(hist.map(d => d.mem_used_mb ?? 0)))}</span>
               </div>
               <span class="expand-pts">{hist.length} pts</span>
             </div>

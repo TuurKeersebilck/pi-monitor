@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/tuurk/dashboard/internal/roundutil"
 )
 
 type Stats struct {
@@ -60,7 +62,7 @@ func (c *Client) GetStats() (*Stats, error) {
 	return &Stats{
 		Photos:  data.Photos,
 		Videos:  data.Videos,
-		UsageGB: roundTo(float64(data.Usage)/1024/1024/1024, 1),
+		UsageGB: roundutil.Round(float64(data.Usage)/1024/1024/1024, 1),
 		Healthy: healthy,
 	}, nil
 }
@@ -77,12 +79,4 @@ func (c *Client) ping() bool {
 	}
 	resp.Body.Close()
 	return resp.StatusCode == http.StatusOK
-}
-
-func roundTo(val float64, decimals int) float64 {
-	pow := float64(1)
-	for i := 0; i < decimals; i++ {
-		pow *= 10
-	}
-	return float64(int(val*pow+0.5)) / pow
 }

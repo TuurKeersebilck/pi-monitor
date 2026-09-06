@@ -4,31 +4,30 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"math"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+
+	"github.com/tuurk/dashboard/internal/roundutil"
 )
 
 type ContainerInfo struct {
-	Name            string  `json:"name"`
-	Image           string  `json:"image"`
-	Status          string  `json:"status"`
-	Uptime          string  `json:"uptime"`
-	Running         bool    `json:"running"`
-	UpdateAvailable bool    `json:"update_available"`
-	LatestVersion   string  `json:"latest_version,omitempty"`
-	Group           string  `json:"group"`
-	URL             string  `json:"url"`
-	CPUPercent      float64 `json:"cpu_percent"`
-	MemUsedMB       float64 `json:"mem_used_mb"`
-	MemLimitMB      float64 `json:"mem_limit_mb"`
-	MemPercent      float64 `json:"mem_percent"`
-	NetRxBytesS     float64 `json:"net_rx_bytes_s"`
-	NetTxBytesS     float64 `json:"net_tx_bytes_s"`
+	Name        string  `json:"name"`
+	Image       string  `json:"image"`
+	Status      string  `json:"status"`
+	Uptime      string  `json:"uptime"`
+	Running     bool    `json:"running"`
+	Group       string  `json:"group"`
+	URL         string  `json:"url"`
+	CPUPercent  float64 `json:"cpu_percent"`
+	MemUsedMB   float64 `json:"mem_used_mb"`
+	MemLimitMB  float64 `json:"mem_limit_mb"`
+	MemPercent  float64 `json:"mem_percent"`
+	NetRxBytesS float64 `json:"net_rx_bytes_s"`
+	NetTxBytesS float64 `json:"net_tx_bytes_s"`
 }
 
 // containerStatsJSON holds only the fields we need from Docker's stats API response.
@@ -159,7 +158,7 @@ func (c *Client) fillStats(ctx context.Context, info *ContainerInfo, id string) 
 		numCPUs = 1
 	}
 	if sysDelta > 0 {
-		info.CPUPercent = round(cpuDelta/sysDelta*float64(numCPUs)*100, 1)
+		info.CPUPercent = roundutil.Round(cpuDelta/sysDelta*float64(numCPUs)*100, 1)
 	}
 
 	// Memory — subtract inactive file cache (correct for both cgroups v1 and v2)
@@ -169,10 +168,10 @@ func (c *Client) fillStats(ctx context.Context, info *ContainerInfo, id string) 
 	} else if v, ok := s.MemoryStats.Stats["cache"]; ok && v < memUsed {
 		memUsed -= v
 	}
-	info.MemUsedMB = round(float64(memUsed)/1024/1024, 1)
-	info.MemLimitMB = round(float64(s.MemoryStats.Limit)/1024/1024, 1)
+	info.MemUsedMB = roundutil.Round(float64(memUsed)/1024/1024, 1)
+	info.MemLimitMB = roundutil.Round(float64(s.MemoryStats.Limit)/1024/1024, 1)
 	if s.MemoryStats.Limit > 0 {
-		info.MemPercent = round(float64(memUsed)/float64(s.MemoryStats.Limit)*100, 1)
+		info.MemPercent = roundutil.Round(float64(memUsed)/float64(s.MemoryStats.Limit)*100, 1)
 	}
 
 	// Network — sum across all interfaces, compute bytes/sec from this
@@ -195,8 +194,8 @@ func (c *Client) fillStats(ctx context.Context, info *ContainerInfo, id string) 
 
 	if hasPrev {
 		if elapsed := now.Sub(prev.at).Seconds(); elapsed > 0 {
-			info.NetRxBytesS = round(float64(totalRx-prev.rx)/elapsed, 0)
-			info.NetTxBytesS = round(float64(totalTx-prev.tx)/elapsed, 0)
+			info.NetRxBytesS = roundutil.Round(float64(totalRx-prev.rx)/elapsed, 0)
+			info.NetTxBytesS = roundutil.Round(float64(totalTx-prev.tx)/elapsed, 0)
 		}
 	}
 }
@@ -212,7 +211,3 @@ func parseUptime(status string) string {
 	return "stopped"
 }
 
-func round(val float64, decimals int) float64 {
-	pow := math.Pow(10, float64(decimals))
-	return math.Round(val*pow) / pow
-}

@@ -68,9 +68,13 @@ func (h *Handler) handleWS(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-func (h *Handler) handleConfig(w http.ResponseWriter, r *http.Request) {
+// writeJSON sets the JSON content type and encodes v to w.
+func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(v)
+}
 
+func (h *Handler) handleConfig(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		cfg, err := h.cfgStore.Load()
@@ -78,7 +82,7 @@ func (h *Handler) handleConfig(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(cfg)
+		writeJSON(w, cfg)
 
 	case http.MethodPost:
 		var cfg config.Config
@@ -130,6 +134,5 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"url": "/uploads/" + filename})
+	writeJSON(w, map[string]string{"url": "/uploads/" + filename})
 }

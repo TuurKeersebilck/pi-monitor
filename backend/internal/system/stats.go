@@ -10,6 +10,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/tuurk/dashboard/internal/roundutil"
 )
 
 type Stats struct {
@@ -150,7 +152,7 @@ func getCPU() (CPUStats, error) {
 	}
 
 	usage := (1 - idleDiff/totalDiff) * 100
-	return CPUStats{UsagePercent: roundTo(usage, 1)}, nil
+	return CPUStats{UsagePercent: roundutil.Round(usage, 1)}, nil
 }
 
 func readCPUStat() ([]uint64, error) {
@@ -203,7 +205,7 @@ func getRAM() (RAMStats, error) {
 
 	var pct float64
 	if totalMB > 0 {
-		pct = roundTo(float64(usedMB)/float64(totalMB)*100, 1)
+		pct = roundutil.Round(float64(usedMB)/float64(totalMB)*100, 1)
 	}
 
 	return RAMStats{
@@ -223,11 +225,11 @@ func getDisk(path string) (DiskStats, error) {
 	free := float64(stat.Bfree) * float64(stat.Bsize)
 	used := total - free
 
-	toGB := func(b float64) float64 { return roundTo(b/1024/1024/1024, 1) }
+	toGB := func(b float64) float64 { return roundutil.Round(b/1024/1024/1024, 1) }
 
 	var pct float64
 	if total > 0 {
-		pct = roundTo(used/total*100, 1)
+		pct = roundutil.Round(used/total*100, 1)
 	}
 
 	return DiskStats{
@@ -246,7 +248,7 @@ func getTemp() TempStats {
 	if err != nil {
 		return TempStats{}
 	}
-	return TempStats{CPUTempC: roundTo(float64(raw)/1000, 1)}
+	return TempStats{CPUTempC: roundutil.Round(float64(raw)/1000, 1)}
 }
 
 var (
@@ -285,8 +287,8 @@ func getNetwork() NetworkStats {
 	}
 
 	return NetworkStats{
-		RxBytesPerSec: roundTo(totalRx, 0),
-		TxBytesPerSec: roundTo(totalTx, 0),
+		RxBytesPerSec: roundutil.Round(totalRx, 0),
+		TxBytesPerSec: roundutil.Round(totalTx, 0),
 	}
 }
 
@@ -328,10 +330,3 @@ func sum(vals []uint64) uint64 {
 	return s
 }
 
-func roundTo(val float64, decimals int) float64 {
-	pow := float64(1)
-	for i := 0; i < decimals; i++ {
-		pow *= 10
-	}
-	return float64(int(val*pow+0.5)) / pow
-}

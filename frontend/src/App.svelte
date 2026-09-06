@@ -6,8 +6,9 @@
   import ImmichStats from './lib/ImmichStats.svelte'
   import Bookmarks from './lib/Bookmarks.svelte'
 
-  let system = $state(null)
   let history = $state([])
+  // system is always exactly history's last element -- never set directly.
+  let system = $derived(history.at(-1) ?? null)
   let containers = $state([])
   let containerHistory = $state({}) // name -> [{ts, cpu_percent, mem_percent, mem_used_mb}]
   let pihole = $state(null)
@@ -69,7 +70,6 @@
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       if (data.system) {
-        system = data.system
         history = [...history.slice(-9999), data.system]
       }
       if (data.containers) {
@@ -255,6 +255,7 @@
                 onclick={handleDarkToggle}
                 role="switch"
                 aria-checked={darkMode}
+                aria-label="Dark mode"
               >
                 <span class="toggle-thumb"></span>
               </button>
@@ -391,8 +392,8 @@
 
   .has-wallpaper .clock-date,
   .has-wallpaper .section-sub,
-  .has-wallpaper .group-name,
-  .has-wallpaper .group-count {
+  .has-wallpaper :global(.group-name),
+  .has-wallpaper :global(.group-count) {
     text-shadow: 0 1px 4px rgba(0,0,0,0.4);
   }
 
